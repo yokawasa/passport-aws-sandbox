@@ -1,0 +1,54 @@
+name: terraform
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: fmt & validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.3
+
+      - name: terraform fmt
+        run: terraform fmt -check -recursive
+
+      # backend を使わずに構文チェックのみ行う (AWS 認証情報は不要)
+      - name: terraform init (no backend)
+        run: terraform -chdir=terraform init -backend=false
+
+      - name: terraform validate
+        run: terraform -chdir=terraform validate
+
+      - name: terraform validate (bootstrap)
+        run: |
+          terraform -chdir=terraform/bootstrap init -backend=false
+          terraform -chdir=terraform/bootstrap validate
+
+  lint-app:
+    name: app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: install
+        run: pip install -r app/requirements.txt
+
+      - name: import check
+        run: python -c "import sys; sys.path.insert(0, 'app'); import main; print(main.app.title)"
+
+      - name: docker build
+        run: docker build -t sample-api:ci app

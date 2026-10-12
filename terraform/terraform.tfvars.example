@@ -1,0 +1,24 @@
+project     = "eks-api"
+environment = "dev"
+region      = "ap-northeast-1"
+
+vpc_cidr           = "10.0.0.0/16"
+az_count           = 2
+single_nat_gateway = true # 検証用。本番は false
+
+kubernetes_version = "1.33"
+
+node_instance_types = ["t3.medium"]
+node_capacity_type  = "ON_DEMAND"
+node_group_size = {
+  min     = 2
+  max     = 4
+  desired = 2
+}
+
+# 自宅/オフィスの IP に絞ることを推奨
+# endpoint_public_access_cidrs = ["203.0.113.10/32"]
+
+tags = {
+  Owner = "platform-team"
+}
