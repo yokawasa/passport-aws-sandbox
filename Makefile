@@ -73,8 +73,15 @@ push: build ## ECR にログインして push
 		| docker login --username AWS --password-stdin $(shell echo $(ECR_URL) | cut -d/ -f1)
 	docker push $(ECR_URL):$(IMAGE_TAG)
 
+.PHONY: apply-secret
+apply-secret: ## /echo 認証用の API_KEY を Secret として作成・更新 (例: make apply-secret API_KEY=xxxx)
+	@test -n "$(API_KEY)" || (echo "API_KEY を指定してください (例: make apply-secret API_KEY=xxxx)" && exit 1)
+	kubectl -n $(NAMESPACE) create secret generic sample-api-secrets \
+		--from-literal=api-key="$(API_KEY)" \
+		--dry-run=client -o yaml | kubectl apply -f -
+
 .PHONY: deploy
-deploy: push ## k8s マニフェストを適用
+deploy: push ## k8s マニフェストを適用 (事前に make apply-secret で API_KEY の Secret を作成しておくこと)
 	sed "s|IMAGE_PLACEHOLDER|$(ECR_URL):$(IMAGE_TAG)|" k8s/deployment.yaml | kubectl apply -f -
 	kubectl apply -f k8s/service.yaml
 	kubectl apply -f k8s/ingress.yaml

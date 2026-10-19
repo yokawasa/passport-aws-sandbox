@@ -28,6 +28,11 @@ spec:
           env:
             - name: APP_VERSION
               value: "0.1.0"
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sample-api-secrets
+                  key: api-key
           resources:
             requests:
               cpu: 100m

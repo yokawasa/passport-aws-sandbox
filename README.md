@@ -105,15 +105,25 @@ make kubeconfig
 kubectl get nodes
 ```
 
-### 4. API をビルドして ECR に push、デプロイ
+### 4. `POST /echo` 用の API キーを Secret として登録
+
+`POST /echo` は `X-API-Key` ヘッダーによる認証が必要です。キーは git 管理せず、Kubernetes Secret として投入します（未設定の場合、`/echo` は常に 401 を返します）。
+
+```bash
+make apply-secret API_KEY=<好きな文字列>
+```
+
+`namespace` は Deployment と同じ `api`（`NAMESPACE` 変数、デフォルト `api`）に作成されます。キーをローテーションする場合も同じコマンドを再実行してください（`kubectl apply` のため既存の Secret は上書きされます）。
+
+### 5. API をビルドして ECR に push、デプロイ
 
 ```bash
 make deploy
 ```
 
-`make deploy` は ECR ログイン → `docker push` → マニフェスト適用（`IMAGE_PLACEHOLDER` を ECR URL に置換）→ rollout 待ちまで行います。
+`make deploy` は ECR ログイン → `docker push` → マニフェスト適用（`IMAGE_PLACEHOLDER` を ECR URL に置換）→ rollout 待ちまで行います。**事前に手順 4 で Secret を作成しておく必要があります**（先に `make deploy` すると Pod が `CreateContainerConfigError` で起動に失敗します）。
 
-### 5. 動作確認
+### 6. 動作確認
 
 ```bash
 make url     # ALB の DNS 名
@@ -125,8 +135,16 @@ ALB のプロビジョニングとヘルスチェック通過に 2〜3 分かか
 ```
 GET /         -> {"message":"Hello from EKS","version":"0.1.0","hostname":"sample-api-..."}
 GET /healthz  -> {"status":"ok"}
-POST /echo    -> リクエストボディをそのまま返す
+POST /echo    -> X-API-Key ヘッダーが手順 4 で設定した値と一致すればリクエストボディをそのまま返す（不一致・未指定は 401）
 GET /docs     -> Swagger UI
+```
+
+```bash
+# POST /echo の例
+curl -X POST "http://$(make url)/echo" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: <手順 4 で設定した値>" \
+  -d '{"message":"hello"}'
 ```
 
 ## 片付け
