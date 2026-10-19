@@ -93,3 +93,25 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+# ---------------------------------------------------------------------------
+# Passport Proxy
+# ---------------------------------------------------------------------------
+
+variable "passport_namespace" {
+  description = "Passport Proxy をデプロイする Kubernetes namespace (Helm 側と一致させる)"
+  type        = string
+  default     = "passport"
+}
+
+variable "passport_secret_prefix" {
+  description = "Passport Proxy が解決を許可される Secrets Manager のシークレット名プレフィックス"
+  type        = string
+  default     = "passport/"
+}
+
+variable "passport_create_demo_secret" {
+  description = "secret reference の動作確認用ダミーシークレットを作成するか"
+  type        = bool
+  default     = false
+}

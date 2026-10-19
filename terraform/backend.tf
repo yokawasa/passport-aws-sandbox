@@ -1,6 +1,9 @@
 # tfstate は S3 に保存する。
 # バケットは terraform/bootstrap で先に作成しておくこと。
 #
+# key のプレフィックスは本リポジトリの旧名 (terraform-aws-eks-api) のまま。
+# 既存 state の移行リスクを避けるため、リポジトリ名変更後も意図的に変えていない。
+#
 # 初期化例:
 #   terraform init \
 #     -backend-config="bucket=<your-tfstate-bucket>" \

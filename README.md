@@ -1,6 +1,10 @@
-# terraform-aws-eks-api
+# passport-aws-sandbox
 
-private subnet の **Amazon EKS** で動く FastAPI の API を、public subnet の **ALB** 経由で公開する最小構成のリファレンス実装です。インフラはすべて Terraform で記述し、既存の [terraform-aws-modules](https://github.com/terraform-aws-modules) を活用しています。
+[Postman Passport](https://usepassport.ai) の動作検証用 AWS サンドボックスです。Passport Proxy が実際にシークレットを解決できることを確かめるには、EKS・ALB・Secrets Manager・IAM (IRSA)・ネットワークなどひととおりの AWS 構成が必要になるため、それらを Terraform で立てられるようにしています。
+
+検証対象の API には、private subnet の **Amazon EKS** で動く FastAPI を public subnet の **ALB** 経由で公開する最小構成を使っています。インフラはすべて Terraform で記述し、既存の [terraform-aws-modules](https://github.com/terraform-aws-modules) を活用しています。
+
+> Passport Proxy のセットアップ手順・検証結果・ハマりどころは [`t/`](t/) 配下にまとまっています（[`passport-guide.ja.md`](t/passport-guide.ja.md) が利用者向け手順書、[`memo.txt`](t/memo.txt) が作業ログ）。
 
 ## アーキテクチャ
 

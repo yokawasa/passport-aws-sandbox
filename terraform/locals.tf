@@ -13,7 +13,7 @@ locals {
       Project     = var.project
       Environment = var.environment
       ManagedBy   = "terraform"
-      Repository  = "terraform-aws-eks-api"
+      Repository  = "passport-aws-sandbox"
     },
     var.tags
   )

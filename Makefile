@@ -12,6 +12,8 @@ ENVIRONMENT    ?= dev
 PROJECT        ?= eks-api
 REGION         ?= ap-northeast-1
 TFSTATE_BUCKET ?=
+# プレフィックスは本リポジトリの旧名 (terraform-aws-eks-api) のまま。
+# 既存 state の移行リスクを避けるため、リポジトリ名変更後も意図的に変えていない。
 TFSTATE_KEY    ?= terraform-aws-eks-api/$(ENVIRONMENT)/terraform.tfstate
 IMAGE_TAG      ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo latest)
 NAMESPACE      ?= api

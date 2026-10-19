@@ -42,3 +42,13 @@ output "kubeconfig_command" {
   description = "kubeconfig を更新するコマンド"
   value       = "aws eks update-kubeconfig --region ${var.region} --name ${module.eks.cluster_name}"
 }
+
+output "passport_proxy_irsa_role_arn" {
+  description = "Passport Proxy の ServiceAccount に付与する IAM ロール ARN"
+  value       = module.passport_proxy_irsa.iam_role_arn
+}
+
+output "passport_demo_secret_name" {
+  description = "検証用シークレットの名前 ({{vault:...}} に指定する値)"
+  value       = try(aws_secretsmanager_secret.demo[0].name, null)
+}
