@@ -34,6 +34,24 @@
 - ノードと control plane の ENI は private subnet のみ。外向き通信は NAT Gateway 経由です。
 - コントローラの IAM 権限は IRSA（OIDC + ServiceAccount）で付与しています。
 
+## アプリケーションアーキテクチャ
+
+開発者の手元、顧客 VPC 内の Passport Proxy、Target API（FastAPI on EKS）の3つの境界を横断して、証明書とリクエストがどう流れるかを示した構成図です。
+
+![アプリケーションアーキテクチャ](assets/architecture.png)
+
+緑の実線は Passport フローとして動作確認済みの経路（`httpbin.org` 宛）、赤の点線は `POST /echo` への直接アクセス（Passport 未経由）を示します。**`/echo` の `X-API-Key` 認証は、現時点では Passport の参照解決の仕組みにまだ接続されていません。** 詳細は [`t/passport-flow-mapping.ja.md`](t/passport-flow-mapping.ja.md) を参照してください。
+
+### 構成要素と Passport フローのステップ対応
+
+| コンポーネント | ステップ | 役割 |
+| --- | --- | --- |
+| Passport backend (Cloud) | 1〜3 | RFA 承認、`/bundles/issue`、Signed JWT Bundle の発行。リポジトリにファイルとして現れない |
+| `passport-passport-mgmt`（:8081） | 4 | `POST /issue-cert` を受け、`allowedApiRefs` を含むクライアント証明書を発行 |
+| ローカル daemon & `~/.passport/` | 4〜5 | 証明書を保存し、`HTTPS_PROXY` 経由でデータプレーンへの mTLS 接続を仲介 |
+| `passport-passport`（:8443） | 5〜7 | mTLS 接続を受理し、参照名を Secrets Manager で解決してから Target API へ転送 |
+| ALB → sample-api Pod | 7 | Target API。**`/echo` は現時点で未登録** — 図の赤い点線のみが到達する経路 |
+
 ## 使っている Terraform モジュール
 
 | モジュール | バージョン | 用途 |
