@@ -4,7 +4,9 @@
 
 検証対象の API には、private subnet の **Amazon EKS** で動く FastAPI を public subnet の **ALB** 経由で公開する最小構成を使っています。インフラはすべて Terraform で記述し、既存の [terraform-aws-modules](https://github.com/terraform-aws-modules) を活用しています。
 
-> Passport Proxy のセットアップ手順・検証結果・ハマりどころは [`t/`](t/) 配下にまとまっています（[`passport-guide.ja.md`](t/passport-guide.ja.md) が利用者向け手順書、[`memo.txt`](t/memo.txt) が作業ログ）。
+> **Passport のセットアップ手順は [`docs/`](docs/) にまとまっています。**
+> インフラ構築からアプリ利用までを4部構成の手順書にしています（[`docs/README.md`](docs/README.md) が目次）。
+> Proxy と管理プレーンはポートフォワードではなく独自ドメインで外部公開する構成です。
 
 ## アーキテクチャ
 
@@ -40,7 +42,7 @@
 
 ![アプリケーションアーキテクチャ](assets/architecture.png)
 
-緑の実線は Passport フローとして動作確認済みの経路（`httpbin.org` 宛）、赤の点線は `POST /echo` への直接アクセス（Passport 未経由）を示します。**`/echo` の `X-API-Key` 認証は、現時点では Passport の参照解決の仕組みにまだ接続されていません。** 詳細は [`t/passport-flow-mapping.ja.md`](t/passport-flow-mapping.ja.md) を参照してください。
+緑の実線は Passport フローとして動作確認済みの経路（`httpbin.org` 宛）、赤の点線は `POST /echo` への直接アクセス（Passport 未経由）を示します。**`/echo` の `X-API-Key` 認証は、現時点では Passport の参照解決の仕組みにまだ接続されていません。** 詳細は [`docs/`](docs/) の手順書を参照してください。
 
 ### 構成要素と Passport フローのステップ対応
 
@@ -85,6 +87,7 @@ ECR リポジトリのみリソースを直書きしています（モジュー�
 │   ├── requirements.txt
 │   └── Dockerfile
 ├── k8s/                  # Deployment / Service / Ingress
+├── docs/                 # Passport セットアップ手順書 (01〜04 + トラブルシューティング)
 ├── .github/workflows/    # fmt / validate / docker build
 └── Makefile
 ```
@@ -167,12 +170,62 @@ curl -X POST "http://$(make url)/echo" \
 
 ## 片付け
 
+**ロードバランサーを先に消してから** `terraform destroy` を実行します。
+
 ```bash
-make undeploy    # 先に Ingress を削除して ALB を消す
+# 1. Passport Proxy を入れている場合は Helm でアンインストール (NLB が消える)
+helm uninstall passport -n passport
+
+# 2. sample-api の Ingress / Service を削除 (ALB が消える)
+make undeploy
+
+# 3. VPC 内に LB が残っていないことを確認 (残っていたら exit 1)
+make destroy-check
+
+# 4. destroy
 make tf-destroy
 ```
 
-> `Ingress` を残したまま `terraform destroy` すると、コントローラが作った ALB とセキュリティグループが残って VPC の削除に失敗します。必ず `make undeploy` を先に実行してください。
+> **⚠️ ALB / NLB は Terraform の管理対象外です。**
+>
+> これらは AWS Load Balancer Controller が `Ingress` / `type: LoadBalancer` の Service を見て作成するため、`terraform destroy` は削除しようとしません。残したまま destroy すると、LB の ENI が private subnet を掴んだままになり、次のエラーで失敗します。
+>
+> ```text
+> Error: deleting EC2 Subnet (subnet-xxxx): ... api error DependencyViolation:
+>   The subnet 'subnet-xxxx' has dependencies and cannot be deleted.
+> ```
+>
+> **とくに `helm uninstall passport` の消し忘れに注意してください。** `make undeploy` は sample-api しか削除しないため、Passport Proxy の NLB が残ります。
+>
+> **LB を消しても付随するセキュリティグループ (`k8s-...`) は残ります。** その場合は次に VPC の削除が同じエラーで失敗します。`make destroy-check` は LB と SG の両方を確認します。
+>
+> **削除は非同期です。** `helm uninstall` / `make undeploy` の完了後、コントローラが実際に LB を消して ENI が解放されるまで **1〜3分**かかります。`make destroy-check` が「(なし)」を返すまで待ってから destroy してください。
+
+### destroy が DependencyViolation で失敗した場合
+
+EKS クラスタが先に消えているとコントローラも失われ、Service の削除による自動削除ができません。AWS 側から直接消します。
+
+```bash
+VPC_ID=<失敗したときの VPC ID>
+
+# 1. 残っている LB を特定
+aws elbv2 describe-load-balancers --region ap-northeast-1 \
+  --query "LoadBalancers[?VpcId=='$VPC_ID'].{Name:LoadBalancerName,ARN:LoadBalancerArn}" --output table
+
+# 2. 削除して、完全に消えるまで待つ
+aws elbv2 delete-load-balancer --region ap-northeast-1 --load-balancer-arn <ARN>
+aws elbv2 wait load-balancers-deleted --region ap-northeast-1 --load-balancer-arns <ARN>
+
+# 3. ENI が解放されたことを確認 (0 になるまで待つ。削除 API 完了後も数分かかる)
+aws ec2 describe-network-interfaces --region ap-northeast-1 \
+  --filters Name=vpc-id,Values=$VPC_ID \
+  --query 'length(NetworkInterfaces)' --output text
+
+# 4. destroy を再実行
+make tf-destroy
+```
+
+LB に付随するセキュリティグループ (`k8s-...`) も残ることがあります。destroy が今度は SG で止まった場合は、ENI 解放後に手動で削除してください。
 
 ## 本番向けに検討したいこと
 
