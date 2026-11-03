@@ -28,16 +28,6 @@ output "private_subnet_ids" {
   value       = module.vpc.private_subnets
 }
 
-output "ecr_repository_url" {
-  description = "API イメージの push 先"
-  value       = aws_ecr_repository.api.repository_url
-}
-
-output "app_namespace" {
-  description = "API の namespace"
-  value       = kubernetes_namespace.app.metadata[0].name
-}
-
 output "kubeconfig_command" {
   description = "kubeconfig を更新するコマンド"
   value       = "aws eks update-kubeconfig --region ${var.region} --name ${module.eks.cluster_name}"

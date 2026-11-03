@@ -82,12 +82,6 @@ variable "node_capacity_type" {
   }
 }
 
-variable "app_namespace" {
-  description = "API をデプロイする Kubernetes namespace"
-  type        = string
-  default     = "api"
-}
-
 variable "tags" {
   description = "全リソースに付与する追加タグ"
   type        = map(string)

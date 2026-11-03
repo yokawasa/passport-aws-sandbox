@@ -33,22 +33,3 @@ jobs:
         run: |
           terraform -chdir=terraform/bootstrap init -backend=false
           terraform -chdir=terraform/bootstrap validate
-
-  lint-app:
-    name: app
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: install
-        run: pip install -r app/requirements.txt
-
-      - name: import check
-        run: python -c "import sys; sys.path.insert(0, 'app'); import main; print(main.app.title)"
-
-      - name: docker build
-        run: docker build -t sample-api:ci app

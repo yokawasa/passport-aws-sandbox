@@ -62,14 +62,3 @@ resource "helm_release" "alb_controller" {
 
   depends_on = [module.eks]
 }
-
-resource "kubernetes_namespace" "app" {
-  metadata {
-    name = var.app_namespace
-    labels = {
-      "app.kubernetes.io/managed-by" = "terraform"
-    }
-  }
-
-  depends_on = [module.eks]
-}

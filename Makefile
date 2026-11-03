@@ -2,8 +2,7 @@
 # 使い方:
 #   make tf-init TFSTATE_BUCKET=my-tfstate-bucket
 #   make tf-apply
-#   make deploy
-#   make url
+#   make kubeconfig
 # ---------------------------------------------------------------------------
 SHELL := /bin/bash
 
@@ -13,8 +12,6 @@ PROJECT        ?= passport-sandbox
 REGION         ?= ap-northeast-1
 TFSTATE_BUCKET ?=
 TFSTATE_KEY    ?= passport-sandbox/$(ENVIRONMENT)/terraform.tfstate
-IMAGE_TAG      ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo latest)
-NAMESPACE      ?= api
 
 TF = terraform -chdir=$(TF_DIR)
 
@@ -64,7 +61,7 @@ destroy-check: ## VPC 内に LB / SG の残骸がないか確認 (tf-destroy の
 		echo ""; \
 		echo "⚠️  LB が残っています。これらは Terraform の管理外 (AWS Load Balancer Controller が作成) のため、"; \
 		echo "    残したまま tf-destroy すると subnet の削除が DependencyViolation で失敗します。"; \
-		echo "    'helm uninstall passport -n passport' と 'make undeploy' を実行し、LB が消えるまで待ってください。"; \
+		echo "    'helm uninstall passport -n passport' を実行し、LB が消えるまで待ってください。"; \
 		exit 1; \
 	else \
 		echo "  (なし)"; \
@@ -92,43 +89,3 @@ tf-destroy: ## terraform destroy (先に make destroy-check を実行するこ�
 .PHONY: kubeconfig
 kubeconfig: ## kubeconfig を更新
 	aws eks update-kubeconfig --region $(REGION) --name $(PROJECT)-$(ENVIRONMENT)
-
-.PHONY: build push
-ECR_URL = $(shell $(TF) output -raw ecr_repository_url)
-
-build: ## Docker イメージをビルド
-	docker build --platform linux/amd64 -t $(ECR_URL):$(IMAGE_TAG) app
-
-push: build ## ECR にログインして push
-	aws ecr get-login-password --region $(REGION) \
-		| docker login --username AWS --password-stdin $(shell echo $(ECR_URL) | cut -d/ -f1)
-	docker push $(ECR_URL):$(IMAGE_TAG)
-
-.PHONY: apply-secret
-apply-secret: ## /echo 認証用の API_KEY を Secret として作成・更新 (例: make apply-secret API_KEY=xxxx)
-	@test -n "$(API_KEY)" || (echo "API_KEY を指定してください (例: make apply-secret API_KEY=xxxx)" && exit 1)
-	kubectl -n $(NAMESPACE) create secret generic sample-api-secrets \
-		--from-literal=api-key="$(API_KEY)" \
-		--dry-run=client -o yaml | kubectl apply -f -
-
-.PHONY: deploy
-deploy: push ## k8s マニフェストを適用 (事前に make apply-secret で API_KEY の Secret を作成しておくこと)
-	sed "s|IMAGE_PLACEHOLDER|$(ECR_URL):$(IMAGE_TAG)|" k8s/deployment.yaml | kubectl apply -f -
-	kubectl apply -f k8s/service.yaml
-	kubectl apply -f k8s/ingress.yaml
-	kubectl -n $(NAMESPACE) rollout status deployment/sample-api
-
-.PHONY: undeploy
-undeploy: ## Ingress (= ALB) ごと削除
-	kubectl delete -f k8s/ingress.yaml --ignore-not-found
-	kubectl delete -f k8s/service.yaml --ignore-not-found
-	kubectl -n $(NAMESPACE) delete deployment sample-api --ignore-not-found
-
-.PHONY: url
-url: ## ALB の DNS 名を表示
-	@kubectl -n $(NAMESPACE) get ingress sample-api -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'; echo
-
-.PHONY: smoke
-smoke: ## ALB 経由で疎通確認
-	@host=$$(kubectl -n $(NAMESPACE) get ingress sample-api -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'); \
-	echo "GET http://$$host/" && curl -fsS "http://$$host/" && echo
