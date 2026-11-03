@@ -38,8 +38,8 @@ Error: deleting EC2 Subnet (subnet-0a331fca695911125): operation error EC2: Dele
   and cannot be deleted.
 ```
 
-**とくに `helm uninstall passport` の消し忘れが典型例です。** `make undeploy` は
-sample-api しか削除しないため、Passport Proxy の NLB が残ります。
+**とくに `helm uninstall passport` の消し忘れが典型例です。** データプレーンの NLB と
+管理プレーンの ALB はどちらも Helm 管理下にあります。
 
 #### 残骸を特定する
 
@@ -92,7 +92,6 @@ exit 1 で止まります。
 
 ```bash
 helm uninstall passport -n passport   # ← 忘れやすい
-make undeploy
 make destroy-check                    # 「(なし)」になるまで待つ
 make tf-destroy
 ```
@@ -129,7 +128,7 @@ sg-06827cbb3ea3d87fa  k8s-traffic-eksapidev-329d1fe766   [k8s] Shared Backend Se
 sg-0d9f17e3b9364e10a  k8s-passport-passport-166f3ee611   [k8s] Managed SecurityGroup for LoadBalancer
 ```
 
-`k8s-passport-passport-*` が Passport Proxy の NLB 用、`k8s-traffic-*` が sample-api の
+`k8s-passport-passport-*` が Passport Proxy の NLB 用、`k8s-traffic-*` が管理プレーンの
 ALB 用です。
 
 #### 削除する

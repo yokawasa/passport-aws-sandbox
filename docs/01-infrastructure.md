@@ -243,13 +243,10 @@ aws acm describe-certificate --certificate-arn "$CERT_ARN" \
 # 1. Passport Proxy をアンインストール (NLB と ALB が消える)
 helm uninstall passport -n passport
 
-# 2. sample-api の Ingress / Service を削除 (ALB が消える)
-make undeploy
-
-# 3. VPC 内に LB が残っていないことを確認 (残っていたら exit 1)
+# 2. VPC 内に LB / SG が残っていないことを確認 (残っていたら exit 1)
 make destroy-check
 
-# 4. destroy
+# 3. destroy
 make tf-destroy
 ```
 
@@ -265,8 +262,8 @@ make tf-destroy
 > ```
 >
 > **とくに `helm uninstall passport` の消し忘れに注意してください。**
-> `make undeploy` は sample-api しか削除しないため、Passport Proxy の NLB が残ります。
-> 本手順書の構成では管理プレーンの ALB も Helm 管理下にあるため、同じく残ります。
+> データプレーンの NLB と管理プレーンの ALB はどちらも Helm 管理下にあるため、
+> アンインストールしないと両方とも残ります。
 >
 > **削除は非同期です。** コントローラが実際に LB を消して ENI が解放されるまで
 > **1〜3分**かかります。`make destroy-check` が「(なし)」を返すまで待ってください。

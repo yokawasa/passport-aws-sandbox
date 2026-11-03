@@ -2,7 +2,7 @@
 
 [Postman Passport](https://usepassport.ai) の動作検証用 AWS サンドボックスです。Passport Proxy が実際にシークレットを解決できることを確かめるには、EKS・ALB・Secrets Manager・IAM (IRSA)・ネットワークなどひととおりの AWS 構成が必要になるため、それらを Terraform で立てられるようにしています。
 
-検証対象の API には、private subnet の **Amazon EKS** で動く FastAPI を public subnet の **ALB** 経由で公開する最小構成を使っています。インフラはすべて Terraform で記述し、既存の [terraform-aws-modules](https://github.com/terraform-aws-modules) を活用しています。
+Passport Proxy は private subnet の **Amazon EKS** で動かし、データプレーン (:8443) を **NLB**、管理プレーンの `/ca.pem` と `/issue-cert` を **ALB** 経由で公開します。転送先の API は `httpbin.org` のような外部 API を使うため、このリポジトリには含まれません。インフラはすべて Terraform で記述し、既存の [terraform-aws-modules](https://github.com/terraform-aws-modules) を活用しています。
 
 > **Passport のセットアップ手順は [`docs/`](docs/) にまとまっています。**
 > インフラ構築からアプリ利用までを4部構成の手順書にしています（[`docs/README.md`](docs/README.md) が目次）。
@@ -13,10 +13,12 @@
 ```
                      Internet
                         │
-                        ▼
-        ┌───────────────────────────────┐
+         ┌──────────────┴──────────────┐
+         │ NLB :8443        ALB :443   │  ← Service / Ingress から自動作成
+         │ (データプレーン) (/ca.pem    │
+         │                  /issue-cert)│
+        ┌┴─────────────────────────────┴┐
         │  public subnet (AZ-a / AZ-c)  │
-        │   ALB (internet-facing)       │  ← Ingress から自動作成
         │   NAT Gateway                 │
         └───────────────┬───────────────┘
                         │ target-type: ip
@@ -24,25 +26,26 @@
         ┌───────────────────────────────┐
         │  private subnet (AZ-a / AZ-c) │
         │   EKS Managed Node Group      │
-        │     └ Pod: FastAPI :8000      │
+        │     └ Pod: Passport Proxy     │
+        │         :8443 / :8081         │
         └───────────────────────────────┘
 ```
 
 ポイント:
 
-- **ALB は Terraform で直接作らない。** EKS 上の AWS Load Balancer Controller が `Ingress` リソースを見て ALB を作成・更新します。パスやリスナーの変更が Kubernetes 側で完結し、ターゲット登録も自動化されるためです。
+- **ALB / NLB は Terraform で直接作らない。** EKS 上の AWS Load Balancer Controller が `Ingress` / `Service` を見て作成・更新します。パスやリスナーの変更が Kubernetes 側で完結し、ターゲット登録も自動化されるためです。
 - VPC モジュールの `public_subnet_tags` / `private_subnet_tags` に `kubernetes.io/role/elb` と `kubernetes.io/role/internal-elb` を付与しています。**このタグが無いとコントローラが subnet を見つけられず ALB が作られません。**
-- ALB は `target-type: ip` で Pod IP に直接ルーティングします（NodePort を経由しない）。
+- `target-type: ip` で Pod IP に直接ルーティングします（NodePort を経由しない）。
 - ノードと control plane の ENI は private subnet のみ。外向き通信は NAT Gateway 経由です。
 - コントローラの IAM 権限は IRSA（OIDC + ServiceAccount）で付与しています。
 
 ## アプリケーションアーキテクチャ
 
-開発者の手元、顧客 VPC 内の Passport Proxy、Target API（FastAPI on EKS）の3つの境界を横断して、証明書とリクエストがどう流れるかを示した構成図です。
+開発者の手元、顧客 VPC 内の Passport Proxy、転送先の Target API の3つの境界を横断して、証明書とリクエストがどう流れるかを示した構成図です。
 
 ![アプリケーションアーキテクチャ](assets/architecture.png)
 
-緑の実線は Passport フローとして動作確認済みの経路（`httpbin.org` 宛）、赤の点線は `POST /echo` への直接アクセス（Passport 未経由）を示します。**`/echo` の `X-API-Key` 認証は、現時点では Passport の参照解決の仕組みにまだ接続されていません。** 詳細は [`docs/`](docs/) の手順書を参照してください。
+緑の実線が Passport フローとして動作確認済みの経路です（`httpbin.org` 宛で検証）。開発者のコードには `{{vault:<UUID>}}` という参照だけを書き、Proxy が Secrets Manager で実値に解決してから転送するため、**開発者は本物の認証情報を一度も受け取りません**。詳細は [`docs/`](docs/) の手順書を参照してください。
 
 ### 構成要素と Passport フローのステップ対応
 
@@ -52,7 +55,7 @@
 | `passport-passport-mgmt`（:8081） | 4 | `POST /issue-cert` を受け、`allowedApiRefs` を含むクライアント証明書を発行 |
 | ローカル daemon & `~/.passport/` | 4〜5 | 証明書を保存し、`HTTPS_PROXY` 経由でデータプレーンへの mTLS 接続を仲介 |
 | `passport-passport`（:8443） | 5〜7 | mTLS 接続を受理し、参照名を Secrets Manager で解決してから Target API へ転送 |
-| ALB → sample-api Pod | 7 | Target API。**`/echo` は現時点で未登録** — 図の赤い点線のみが到達する経路 |
+| Target API（外部） | 7 | 転送先の API。`httpbin.org` などの外部エンドポイントを使う。リポジトリには含まれない |
 
 ## 使っている Terraform モジュール
 
@@ -63,8 +66,6 @@
 | `terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks` | `~> 5.60` | ALB Controller 用の IRSA ロール（AWS 管理のポリシー相当を同梱） |
 | `helm_release` (hashicorp/helm) | — | `aws-load-balancer-controller` chart のインストール |
 
-ECR リポジトリのみリソースを直書きしています（モジュールを使うほどの設定量がないため）。
-
 ## ディレクトリ構成
 
 ```
@@ -73,22 +74,17 @@ ECR リポジトリのみリソースを直書きしています（モジュー�
 │   ├── bootstrap/        # tfstate 用 S3 バケット (state はローカル)
 │   ├── versions.tf       # provider / terraform のバージョン制約
 │   ├── backend.tf        # S3 backend (partial configuration)
-│   ├── providers.tf      # aws / kubernetes / helm
+│   ├── providers.tf      # aws / helm
 │   ├── variables.tf
 │   ├── locals.tf         # 命名規則、AZ、subnet CIDR 計算
 │   ├── vpc.tf
 │   ├── eks.tf
-│   ├── ecr.tf
-│   ├── alb_controller.tf # IRSA + helm_release + app namespace
+│   ├── alb_controller.tf # IRSA + helm_release (ALB Controller)
 │   ├── outputs.tf
 │   └── terraform.tfvars.example
-├── app/                  # FastAPI サンプル API
-│   ├── main.py
-│   ├── requirements.txt
-│   └── Dockerfile
-├── k8s/                  # Deployment / Service / Ingress
 ├── docs/                 # Passport セットアップ手順書 (01〜04 + トラブルシューティング)
-├── .github/workflows/    # fmt / validate / docker build
+├── assets/               # アーキテクチャ図 (drawio / png)
+├── .github/workflows/    # terraform fmt / validate
 └── Makefile
 ```
 
@@ -126,47 +122,19 @@ make kubeconfig
 kubectl get nodes
 ```
 
-### 4. `POST /echo` 用の API キーを Secret として登録
+### 4. Passport Proxy をデプロイする
 
-`POST /echo` は `X-API-Key` ヘッダーによる認証が必要です。キーは git 管理せず、Kubernetes Secret として投入します（未設定の場合、`/echo` は常に 401 を返します）。
+ここから先は Passport の設定です。手順は [`docs/`](docs/) にまとまっています。
 
-```bash
-make apply-secret API_KEY=<好きな文字列>
-```
+| ドキュメント | 内容 |
+| --- | --- |
+| [`docs/01-infrastructure.md`](docs/01-infrastructure.md) | 上記 1〜3 の詳細 + 管理プレーン用の ACM 証明書発行 |
+| [`docs/02-passport-proxy.md`](docs/02-passport-proxy.md) | 鍵の生成、`values.yaml` の設定、Helm でのデプロイ |
+| [`docs/03-dns-and-exposure.md`](docs/03-dns-and-exposure.md) | Route53 のレコード作成、疎通確認、Namespaces の設定 |
+| [`docs/04-developer-setup.md`](docs/04-developer-setup.md) | 開発者の CLI セットアップと secret reference の利用 |
 
-`namespace` は Deployment と同じ `api`（`NAMESPACE` 変数、デフォルト `api`）に作成されます。キーをローテーションする場合も同じコマンドを再実行してください（`kubectl apply` のため既存の Secret は上書きされます）。
-
-### 5. API をビルドして ECR に push、デプロイ
-
-```bash
-make deploy
-```
-
-`make deploy` は ECR ログイン → `docker push` → マニフェスト適用（`IMAGE_PLACEHOLDER` を ECR URL に置換）→ rollout 待ちまで行います。**事前に手順 4 で Secret を作成しておく必要があります**（先に `make deploy` すると Pod が `CreateContainerConfigError` で起動に失敗します）。
-
-### 6. 動作確認
-
-```bash
-make url     # ALB の DNS 名
-make smoke   # ALB 経由で GET /
-```
-
-ALB のプロビジョニングとヘルスチェック通過に 2〜3 分かかります。
-
-```
-GET /         -> {"message":"Hello from EKS","version":"0.1.0","hostname":"sample-api-..."}
-GET /healthz  -> {"status":"ok"}
-POST /echo    -> X-API-Key ヘッダーが手順 4 で設定した値と一致すればリクエストボディをそのまま返す（不一致・未指定は 401）
-GET /docs     -> Swagger UI
-```
-
-```bash
-# POST /echo の例
-curl -X POST "http://$(make url)/echo" \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: <手順 4 で設定した値>" \
-  -d '{"message":"hello"}'
-```
+転送先の API はリポジトリに含めていません。`httpbin.org` のような外部エンドポイントを
+Namespace のリソースとして登録して検証します。
 
 ## 片付け
 
@@ -176,13 +144,10 @@ curl -X POST "http://$(make url)/echo" \
 # 1. Passport Proxy を入れている場合は Helm でアンインストール (NLB が消える)
 helm uninstall passport -n passport
 
-# 2. sample-api の Ingress / Service を削除 (ALB が消える)
-make undeploy
-
-# 3. VPC 内に LB が残っていないことを確認 (残っていたら exit 1)
+# 2. VPC 内に LB / SG が残っていないことを確認 (残っていたら exit 1)
 make destroy-check
 
-# 4. destroy
+# 3. destroy
 make tf-destroy
 ```
 
@@ -195,11 +160,11 @@ make tf-destroy
 >   The subnet 'subnet-xxxx' has dependencies and cannot be deleted.
 > ```
 >
-> **とくに `helm uninstall passport` の消し忘れに注意してください。** `make undeploy` は sample-api しか削除しないため、Passport Proxy の NLB が残ります。
+> **とくに `helm uninstall passport` の消し忘れに注意してください。** Passport の NLB と ALB はどちらも Helm 管理下にあるため、残ったままだと destroy に失敗します。
 >
 > **LB を消しても付随するセキュリティグループ (`k8s-...`) は残ります。** その場合は次に VPC の削除が同じエラーで失敗します。`make destroy-check` は LB と SG の両方を確認します。
 >
-> **削除は非同期です。** `helm uninstall` / `make undeploy` の完了後、コントローラが実際に LB を消して ENI が解放されるまで **1〜3分**かかります。`make destroy-check` が「(なし)」を返すまで待ってから destroy してください。
+> **削除は非同期です。** `helm uninstall` の完了後、コントローラが実際に LB を消して ENI が解放されるまで **1〜3分**かかります。`make destroy-check` が「(なし)」を返すまで待ってから destroy してください。
 
 ### destroy が DependencyViolation で失敗した場合
 
@@ -231,10 +196,9 @@ LB に付随するセキュリティグループ (`k8s-...`) も残ることが�
 
 - `single_nat_gateway = false` にして AZ ごとに NAT Gateway を配置（単一障害点の除去）
 - `endpoint_public_access = false` + Session Manager / VPN 経由の運用
-- ACM 証明書 + Route 53 で HTTPS 化（`k8s/ingress.yaml` のコメント部分を参照）
 - ALB に WAF / Shield Advanced を適用
 - HPA、PodDisruptionBudget、Cluster Autoscaler または Karpenter の導入
-- VPC エンドポイント（ECR / S3 / CloudWatch Logs）で NAT 通信料を削減
+- VPC エンドポイント（S3 / CloudWatch Logs）で NAT 通信料を削減
 - EKS コントロールプレーンのログ有効化とコンテナログの収集（Fluent Bit など）
 - OIDC 連携した GitHub Actions からの `terraform plan` / `apply` 自動化
 

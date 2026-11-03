@@ -16,18 +16,17 @@ Terraform で立て、Passport Proxy がシークレットを解決できるこ�
 
 | ディレクトリ | 内容 |
 | --- | --- |
-| `terraform/` | VPC / EKS / ECR / ALB Controller / Passport 用 IRSA |
-| `app/` | 検証対象の FastAPI |
-| `k8s/` | sample-api の Deployment / Service / Ingress |
+| `terraform/` | VPC / EKS / ALB Controller / Passport 用 IRSA |
 | `docs/` | Passport セットアップ手順書（01〜04 + troubleshooting） |
+| `assets/` | アーキテクチャ図（`architecture.drawio` が原本、PNG は drawio CLI で書き出し） |
 
 ## 落とし穴
 
 - **ALB / NLB とその SG は Terraform 管理外。** AWS Load Balancer Controller が
   `Ingress` / `type: LoadBalancer` の Service を見て作る。残したまま destroy すると
   subnet → VPC の順に `DependencyViolation` で失敗する。
-  片付けは `helm uninstall passport -n passport` → `make undeploy` →
-  `make destroy-check` → `make tf-destroy` の順。削除は非同期なので待つこと。
+  片付けは `helm uninstall passport -n passport` → `make destroy-check` →
+  `make tf-destroy` の順。削除は非同期なので待つこと。
 - **IRSA は `helm upgrade` だけでは効かない。** webhook が Pod 作成時のみ env を
   注入するため、`kubectl -n passport rollout restart deploy/passport-passport` が要る。
 - AWS CLI は `AWS_PROFILE` の指定が要る。SSO 期限切れ時、`aws sts get-caller-identity`

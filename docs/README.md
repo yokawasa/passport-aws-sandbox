@@ -45,7 +45,6 @@ Proxy と管理プレーンの両方に独自ドメインで外部からアク�
 | 03 | [DNS と外部公開](03-dns-and-exposure.md) | 管理者 | Route53 にレコードを切り、ホスト名を確定して疎通確認する。Namespaces を設定する |
 | 04 | [開発者向けセットアップ](04-developer-setup.md) | 開発者 | CLI をインストールし、secret reference 経由で API を叩く |
 | — | [トラブルシューティング](troubleshooting.md) | 全員 | 実機で遭遇した落とし穴の一覧 |
-| — | [旧・統合手順書](passport-guide.ja.md) | 参考 | 01〜04 に再編する前の単一ファイル版（port-forward 前提の記述を含む） |
 
 ## この構成の設計方針
 
