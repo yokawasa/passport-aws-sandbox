@@ -9,12 +9,10 @@ SHELL := /bin/bash
 
 TF_DIR         ?= terraform
 ENVIRONMENT    ?= dev
-PROJECT        ?= eks-api
+PROJECT        ?= passport-sandbox
 REGION         ?= ap-northeast-1
 TFSTATE_BUCKET ?=
-# プレフィックスは本リポジトリの旧名 (terraform-aws-eks-api) のまま。
-# 既存 state の移行リスクを避けるため、リポジトリ名変更後も意図的に変えていない。
-TFSTATE_KEY    ?= terraform-aws-eks-api/$(ENVIRONMENT)/terraform.tfstate
+TFSTATE_KEY    ?= passport-sandbox/$(ENVIRONMENT)/terraform.tfstate
 IMAGE_TAG      ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo latest)
 NAMESPACE      ?= api
 
@@ -54,8 +52,41 @@ tf-plan: ## terraform plan
 tf-apply: ## terraform apply
 	$(TF) apply
 
+.PHONY: destroy-check
+destroy-check: ## VPC 内に LB / SG の残骸がないか確認 (tf-destroy の前に実行)
+	@vpc=$$($(TF) output -raw vpc_id 2>/dev/null); \
+	test -n "$$vpc" || (echo "vpc_id を取得できません。既に destroy 済みか init が未実行です" && exit 1); \
+	echo "VPC $$vpc に残っている Load Balancer:"; \
+	lbs=$$(aws elbv2 describe-load-balancers --region $(REGION) \
+		--query "LoadBalancers[?VpcId=='$$vpc'].LoadBalancerName" --output text); \
+	if [ -n "$$lbs" ]; then \
+		echo "  $$lbs"; \
+		echo ""; \
+		echo "⚠️  LB が残っています。これらは Terraform の管理外 (AWS Load Balancer Controller が作成) のため、"; \
+		echo "    残したまま tf-destroy すると subnet の削除が DependencyViolation で失敗します。"; \
+		echo "    'helm uninstall passport -n passport' と 'make undeploy' を実行し、LB が消えるまで待ってください。"; \
+		exit 1; \
+	else \
+		echo "  (なし)"; \
+	fi; \
+	echo ""; \
+	echo "VPC $$vpc に残っている k8s 由来のセキュリティグループ:"; \
+	sgs=$$(aws ec2 describe-security-groups --region $(REGION) \
+		--filters Name=vpc-id,Values=$$vpc \
+		--query "SecurityGroups[?GroupName!='default'].GroupId" --output text); \
+	if [ -n "$$sgs" ]; then \
+		echo "  $$sgs"; \
+		echo ""; \
+		echo "⚠️  セキュリティグループが残っています。LB 本体を消しても付随する SG は残るため、"; \
+		echo "    残したまま tf-destroy すると VPC の削除が DependencyViolation で失敗します。"; \
+		echo "    docs/troubleshooting.md の「VPC の DependencyViolation」を参照して削除してください。"; \
+		exit 1; \
+	else \
+		echo "  (なし)"; \
+	fi
+
 .PHONY: tf-destroy
-tf-destroy: ## terraform destroy (先に make undeploy で ALB を消すこと)
+tf-destroy: ## terraform destroy (先に make destroy-check を実行すること)
 	$(TF) destroy
 
 .PHONY: kubeconfig

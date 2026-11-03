@@ -1,7 +1,7 @@
 variable "project" {
   description = "リソース名のプレフィックス"
   type        = string
-  default     = "eks-api"
+  default     = "passport-sandbox"
 }
 
 variable "environment" {

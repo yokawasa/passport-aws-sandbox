@@ -1,4 +1,4 @@
-project     = "eks-api"
+project     = "passport-sandbox"
 environment = "dev"
 region      = "ap-northeast-1"
 
