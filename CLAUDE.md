@@ -20,7 +20,6 @@ Terraform で立て、Passport Proxy がシークレットを解決できるこ�
 | `app/` | 検証対象の FastAPI |
 | `k8s/` | sample-api の Deployment / Service / Ingress |
 | `docs/` | Passport セットアップ手順書（01〜04 + troubleshooting） |
-| `t/` | **gitignore されたローカル作業用**。ここへのリンクを公開ドキュメントに書かない |
 
 ## 落とし穴
 
@@ -31,7 +30,6 @@ Terraform で立て、Passport Proxy がシークレットを解決できるこ�
   `make destroy-check` → `make tf-destroy` の順。削除は非同期なので待つこと。
 - **IRSA は `helm upgrade` だけでは効かない。** webhook が Pod 作成時のみ env を
   注入するため、`kubectl -n passport rollout restart deploy/passport-passport` が要る。
-- **`t/` は gitignore。** ここのファイルを削除すると復元できない。
 - AWS CLI は `AWS_PROFILE` の指定が要る。SSO 期限切れ時、`aws sts get-caller-identity`
   が通っても Terraform は失敗する（`aws sso login` で解消）。
 

@@ -373,8 +373,7 @@ Namespaces のセットアップが完了したら、チームを招待します
 | Namespace ID | `<Namespace UUID>` |
 | 手順書 | [04-developer-setup.md](04-developer-setup.md) |
 
-このリポジトリの `t/issue-cert.sh`（ローカル検証用。リポジトリには含まれません） も、新しいホスト名に合わせて
-更新してください。
+開発者に渡す `passport setup` の例:
 
 ```bash
 passport setup \
@@ -386,7 +385,7 @@ passport setup \
 ```
 
 > **⚠️ MDM プロファイルがコマンドライン引数より優先されます。**
-> 社内 Mac が MDM 管理下にある場合、`t/passport-mdm.sh`（ローカル検証用。リポジトリには含まれません） 側の
+> 社内 Mac が MDM 管理下にある場合、配布している MDM プロファイルの
 > `ManagementURL` / `ProxyURL` も新しいホスト名に更新しないと、引数で指定しても
 > 古い接続先が使われ続けます。詳細は
 > [04-developer-setup.md](04-developer-setup.md#エンドポイント解決の優先順位)を

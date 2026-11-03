@@ -161,8 +161,7 @@ defaults read /Library/Managed\ Preferences/com.postman.passport
 ```
 
 **古いホスト名（または `localhost`）が入っている場合、引数では切り替えられません。**
-IT 管理者にプロファイルの更新を依頼してください。本リポジトリでは
-`t/passport-mdm.sh`（ローカル検証用。リポジトリには含まれません） が該当します。
+IT 管理者にプロファイルの更新を依頼してください。
 
 ### セットアップを実行する
 
