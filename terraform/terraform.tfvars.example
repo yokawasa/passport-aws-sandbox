@@ -18,9 +18,24 @@ node_group_size = {
 
 # kubectl の接続先 (EKS の Kubernetes API) を許可する CIDR。
 # Passport Proxy の公開範囲とは別物。
-# コメントアウトのままだと既定の 0.0.0.0/0 (全世界) が使われるので、
-# 自分のグローバル IP に絞ることを推奨: curl -s https://checkip.amazonaws.com
+# 未指定だと既定の 0.0.0.0/0 (全世界) になるので、必ず自分のグローバル IP に
+# 置き換えること: curl -s https://checkip.amazonaws.com
 endpoint_public_access_cidrs = ["203.0.113.10/32"]
+
+# --- Passport 関連 ---
+
+# Passport Proxy をデプロイする namespace。
+# helm install の -n と必ず一致させること (ずれると IRSA の信頼関係が成立せず、
+# Proxy が Secrets Manager を読めなくなる)。
+passport_namespace = "passport"
+
+# Proxy が解決を許可される Secrets Manager のシークレット名プレフィックス。
+# このプレフィックス配下だけ読めるので、無関係なシークレットへのアクセスを防げる。
+passport_secret_prefix = "passport/"
+
+# secret reference の疎通確認用のダミーシークレットを作るか。
+# 実値が tfstate に残るので、本番の認証情報は絶対に入れないこと。
+passport_create_demo_secret = true
 
 tags = {
   Owner = "platform-team"

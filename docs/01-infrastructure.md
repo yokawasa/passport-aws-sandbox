@@ -39,29 +39,22 @@ make bootstrap TFSTATE_BUCKET=my-tfstate-bucket-1234 REGION=ap-northeast-1
 cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 ```
 
-`terraform/terraform.tfvars` を編集します。Passport 向けに**最低限ここだけは確認**して
-ください。
+`terraform.tfvars.example` には全変数が記載済みなので、値を書き足す必要はありません。
+ただし以下は**必ず自分の環境の値に直してください**。
 
-```hcl
-region = "ap-northeast-1"
+> **⚠️ `endpoint_public_access_cidrs` は例示用の IP (`203.0.113.10/32`) が入っています。**
+> そのまま apply すると自分の端末から `kubectl` が通りません。
+>
+> ```bash
+> curl -s https://checkip.amazonaws.com   # 自分のグローバル IP を確認
+> ```
 
-# kubectl の接続先 (EKS の Kubernetes API)。Passport の公開範囲とは別物。
-# 既定は 0.0.0.0/0 (全世界) なので、自分のグローバル IP に絞ることを強く推奨:
-#   curl -s https://checkip.amazonaws.com
-endpoint_public_access_cidrs = ["203.0.113.10/32"]
-
-# --- Passport 関連 ---
-passport_namespace          = "passport"   # Helm の -n と一致させること
-passport_secret_prefix      = "passport/"  # Proxy が読めるシークレットの範囲
-passport_create_demo_secret = true         # 検証するなら true
-```
-
-| 変数 | デフォルト | 備考 |
+| 変数 | example の値 | 備考 |
 | --- | --- | --- |
-| `endpoint_public_access_cidrs` | **`0.0.0.0/0`** | **`kubectl` が叩く EKS API の公開範囲。Passport の :8443 / :8081 とは無関係。** 既定のままだとクラスタ管理 API が全世界から到達可能になるため、自分の IP に絞る。接続元 IP が変わったら再 apply が必要 |
+| `endpoint_public_access_cidrs` | `["203.0.113.10/32"]` | **要変更。`kubectl` が叩く EKS API の公開範囲で、Passport の :8443 / :8081 とは無関係。** 変数の既定値は `0.0.0.0/0` なので、行ごと消すと全世界公開になる。接続元 IP が変わったら再 apply が必要 |
 | `passport_namespace` | `passport` | **Helm インストール時の `-n` と必ず一致させる。** ずれると IRSA の信頼関係が成立せず、Secrets Manager の解決が失敗する |
 | `passport_secret_prefix` | `passport/` | このプレフィックス配下のシークレットだけ Proxy が読める。無関係なシークレットへのアクセスを防ぐ |
-| `passport_create_demo_secret` | `false` | `true` にすると検証用のダミートークンが作られる。**実値が tfstate に残るので本番の認証情報は入れないこと** |
+| `passport_create_demo_secret` | `true` | 検証用のダミートークンを作る。**実値が tfstate に残るので本番の認証情報は入れないこと。** 不要なら `false`（変数の既定値も `false`） |
 
 ## Step 3. init / apply
 
