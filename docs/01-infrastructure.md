@@ -45,7 +45,9 @@ cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 ```hcl
 region = "ap-northeast-1"
 
-# EKS API エンドポイントは自分の IP に絞るのを推奨
+# kubectl の接続先 (EKS の Kubernetes API)。Passport の公開範囲とは別物。
+# 既定は 0.0.0.0/0 (全世界) なので、自分のグローバル IP に絞ることを強く推奨:
+#   curl -s https://checkip.amazonaws.com
 endpoint_public_access_cidrs = ["203.0.113.10/32"]
 
 # --- Passport 関連 ---
@@ -56,6 +58,7 @@ passport_create_demo_secret = true         # 検証するなら true
 
 | 変数 | デフォルト | 備考 |
 | --- | --- | --- |
+| `endpoint_public_access_cidrs` | **`0.0.0.0/0`** | **`kubectl` が叩く EKS API の公開範囲。Passport の :8443 / :8081 とは無関係。** 既定のままだとクラスタ管理 API が全世界から到達可能になるため、自分の IP に絞る。接続元 IP が変わったら再 apply が必要 |
 | `passport_namespace` | `passport` | **Helm インストール時の `-n` と必ず一致させる。** ずれると IRSA の信頼関係が成立せず、Secrets Manager の解決が失敗する |
 | `passport_secret_prefix` | `passport/` | このプレフィックス配下のシークレットだけ Proxy が読める。無関係なシークレットへのアクセスを防ぐ |
 | `passport_create_demo_secret` | `false` | `true` にすると検証用のダミートークンが作られる。**実値が tfstate に残るので本番の認証情報は入れないこと** |
@@ -287,11 +290,4 @@ aws acm delete-certificate --certificate-arn "$CERT_ARN" --region ap-northeast-1
 # Route53 レコード (検証用 CNAME と passport-* の CNAME)
 # change-resource-record-sets の Action: DELETE で削除する
 # ※ DELETE では Name / Type / TTL / ResourceRecords を作成時と完全一致させる必要がある
-```
-
-ACM 証明書と Route53 レコードは手動で作っているので、手動で消します。
-
-```bash
-aws acm delete-certificate --certificate-arn "$CERT_ARN" --region ap-northeast-1
-# Route53 の検証レコード・CNAME は change-resource-record-sets の Action: DELETE で削除
 ```

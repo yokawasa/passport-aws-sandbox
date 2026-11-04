@@ -16,8 +16,11 @@ node_group_size = {
   desired = 2
 }
 
-# 自宅/オフィスの IP に絞ることを推奨
-# endpoint_public_access_cidrs = ["203.0.113.10/32"]
+# kubectl の接続先 (EKS の Kubernetes API) を許可する CIDR。
+# Passport Proxy の公開範囲とは別物。
+# コメントアウトのままだと既定の 0.0.0.0/0 (全世界) が使われるので、
+# 自分のグローバル IP に絞ることを推奨: curl -s https://checkip.amazonaws.com
+endpoint_public_access_cidrs = ["203.0.113.10/32"]
 
 tags = {
   Owner = "platform-team"

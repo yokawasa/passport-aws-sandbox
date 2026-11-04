@@ -106,7 +106,7 @@ make bootstrap TFSTATE_BUCKET=my-tfstate-bucket-1234 REGION=ap-northeast-1
 
 ```bash
 cp terraform/terraform.tfvars.example terraform/terraform.tfvars
-# 必要に応じて編集（endpoint_public_access_cidrs は自分の IP に絞るのを推奨）
+# 必要に応じて編集（endpoint_public_access_cidrs は kubectl の接続元 IP に絞るのを推奨。既定は 0.0.0.0/0）
 
 make tf-init TFSTATE_BUCKET=my-tfstate-bucket-1234
 make tf-plan

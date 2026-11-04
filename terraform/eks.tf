@@ -6,7 +6,8 @@ module "eks" {
   kubernetes_version = var.kubernetes_version
 
   # 運用端末から kubectl したいので public エンドポイントを有効化。
-  # 本番では endpoint_public_access_cidrs を絞るか false にする。
+  # var.endpoint_public_access_cidrs の既定は 0.0.0.0/0 なので、
+  # tfvars で接続元 IP に絞ること (本番では endpoint_public_access = false も検討)。
   endpoint_public_access       = true
   endpoint_public_access_cidrs = var.endpoint_public_access_cidrs
   endpoint_private_access      = true
