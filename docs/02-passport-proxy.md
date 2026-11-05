@@ -395,12 +395,33 @@ helm install passport oci://ociregistry.usepassport.ai/passport/passport \
   --version 0.6.0 -f values.yaml -n passport
 ```
 
-> **install が失敗した場合**
-> リリースが `failed` 状態で残るため `helm install` をやり直せません
-> （`cannot re-use a name that is still in use`）。
-> `values.yaml` を修正して **`helm upgrade`** で適用するか、
-> `helm uninstall passport -n passport` してからやり直してください。
-> 状態確認: `helm status passport -n passport`
+> **⚠️ `install` は初回だけです。2回目以降は `upgrade` を使ってください。**
+>
+> リリースが既に存在する状態で `helm install` を実行すると、**成功・失敗を問わず**
+> 次のエラーで拒否されます。
+>
+> ```text
+> Error: INSTALLATION FAILED: release name check failed:
+>   cannot reuse a name that is still in use
+> ```
+>
+> `values.yaml` を変更して反映させる場合も `upgrade` です。
+>
+> ```bash
+> helm upgrade passport oci://ociregistry.usepassport.ai/passport/passport \
+>   --version 0.6.0 -f values.yaml -n passport
+> ```
+>
+> **どちらを使うべきか迷うなら `--install` を付ける**と、無ければ install・
+> あれば upgrade になります（冪等なので検証中の試行錯誤に向きます）。
+>
+> ```bash
+> helm upgrade --install passport oci://ociregistry.usepassport.ai/passport/passport \
+>   --version 0.6.0 -f values.yaml -n passport
+> ```
+>
+> 現在の状態は `helm list -n passport` / `helm status passport -n passport` で
+> 確認できます。やり直したい場合のみ `helm uninstall passport -n passport` です。
 
 ### 5-3. Pod とリリースの状態を確認する
 

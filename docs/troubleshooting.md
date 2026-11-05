@@ -214,7 +214,7 @@ aws sso login --profile my-aws-profile
 | 症状 | 原因 | 対処 |
 | --- | --- | --- |
 | ★ `imagePullSecrets: element 0: associative list with keys may not have non-map elements` | `image.pullSecrets` を文字列のリストで書いた | `- name: passport-registry` 形式に直す。**`--dry-run` では検出できない** |
-| ★ `cannot re-use a name that is still in use` | 前回の install が失敗してリリースが残っている | `helm upgrade` で適用するか `helm uninstall` してやり直す。状態は `helm status` で確認 |
+| ★ `cannot reuse a name that is still in use` | **リリースが既に存在する状態で `helm install` を実行した。** 前回が成功 (`deployed`) でも失敗 (`failed`) でも同じ | **2回目以降は `helm upgrade`**（迷うなら `helm upgrade --install`）。状態は `helm list -n passport` で確認。やり直すなら `helm uninstall` |
 | ★ `helm list -a` が `unknown shorthand flag` | helm 4.x でフラグが変更された | `helm list` または `helm status <release> -n <ns>` を使う |
 | チャートのレンダリングが失敗する | `bundle.allowedTeamIds` が未設定 | 自分の Team ID（`org_...`）を設定する |
 | `service.type=LoadBalancer ... may provision a PUBLIC LB` の警告 | `internet-facing` を選んでいる | 本手順書では**意図した構成**なので想定どおり。`internal` にしたい場合は annotation を変更 |
