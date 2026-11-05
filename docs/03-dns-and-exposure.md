@@ -32,14 +32,17 @@ export DOMAIN=example.com
 # 02 の Step 5-5 で取得した LB の DNS 名
 NLB_DNS=$(kubectl -n passport get svc passport-passport \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-ALB_DNS=$(kubectl -n passport get ingress passport \
-  -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+ALB_DNS=$(kubectl -n passport get ingress -l app.kubernetes.io/instance=passport \
+  -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}')
 
 echo "NLB: $NLB_DNS"
 echo "ALB: $ALB_DNS"
 ```
 
 両方とも空でないことを確認してください。空の場合は LB のプロビジョニング待ちです。
+
+> Ingress 名はリリース名と異なり **`passport-passport-setup`**（`<release>-<chart>-setup`）
+> です。上ではラベルで選んでいるので名前に依存しません。
 
 ### 1-2. レコードを作成する
 

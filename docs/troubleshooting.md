@@ -297,6 +297,7 @@ helm upgrade passport oci://ociregistry.usepassport.ai/passport/passport \
 | ACM 証明書が `PENDING_VALIDATION` のまま | 検証用 CNAME が引けない | `dig +short <validation-name> CNAME` で確認。`Name` の末尾のドットまで完全一致させる |
 | `/metrics` や `/console` に外部から到達できてしまう | `ingress.paths` を広げすぎた | `/ca.pem` と `/issue-cert` のみに戻す |
 | Ingress に ADDRESS が付かない | ALB のプロビジョニング待ち、または subnet タグ不足 | 2〜3分待つ。`kubernetes.io/role/elb` タグを確認 |
+| ★ `kubectl get ingress passport` が `NotFound` | **Ingress 名はリリース名と違う。** 実際は `<release>-<chart>-setup`（既定で `passport-passport-setup`） | 名前ではなくラベルで選ぶ: `kubectl -n passport get ingress -l app.kubernetes.io/instance=passport -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}'` |
 
 ---
 

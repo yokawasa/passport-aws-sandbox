@@ -455,8 +455,8 @@ NAME                         TYPE           EXTERNAL-IP                         
 svc/passport-passport        LoadBalancer   k8s-passport-....elb.amazonaws.com        8443:xxxxx/TCP
 svc/passport-passport-mgmt   ClusterIP      <none>                                    8081/TCP
 
-NAME                   CLASS   HOSTS                                 ADDRESS
-ingress/passport       alb     passport-mgmt.example.com  k8s-passport-....elb.amazonaws.com
+NAME                                CLASS   HOSTS                       ADDRESS
+ingress/passport-passport-setup     alb     passport-mgmt.example.com   k8s-passportmgmt-....elb.amazonaws.com
 ```
 
 **`passport-passport-mgmt` が `ClusterIP` のままであること**を必ず確認してください。
@@ -550,9 +550,17 @@ kubectl -n passport get svc passport-passport \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'; echo
 
 # 管理プレーン (ALB)
-kubectl -n passport get ingress passport \
-  -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'; echo
+kubectl -n passport get ingress -l app.kubernetes.io/instance=passport \
+  -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}'; echo
 ```
+
+> **⚠️ Ingress の名前はリリース名と同じではありません。**
+>
+> チャートが作る Ingress は **`<release>-<chart>-setup`**、既定のリリース名なら
+> `passport-passport-setup` です。`get ingress passport` では見つかりません。
+>
+> 上のコマンドはラベル (`app.kubernetes.io/instance`) で選ぶので、名前が変わっても
+> 動きます。実際の名前は `kubectl -n passport get ingress` で確認できます。
 
 ALB のプロビジョニングには **2〜3分**かかります。空で返る場合は少し待ってから再実行して
 ください。
@@ -573,6 +581,6 @@ ALB のプロビジョニングには **2〜3分**かかります。空で返る
 | 項目 | 取得方法 |
 | --- | --- |
 | **NLB の DNS 名** | `kubectl -n passport get svc passport-passport -o jsonpath='{...}'` |
-| **ALB の DNS 名** | `kubectl -n passport get ingress passport -o jsonpath='{...}'` |
+| **ALB の DNS 名** | `kubectl -n passport get ingress -l app.kubernetes.io/instance=passport -o jsonpath='{...}'`（Ingress 名は `passport-passport-setup`） |
 
 → [03. DNS と外部公開](03-dns-and-exposure.md) へ進む
