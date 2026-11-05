@@ -20,7 +20,7 @@ node_group_size = {
 # Passport Proxy の公開範囲とは別物。
 # 未指定だと既定の 0.0.0.0/0 (全世界) になるので、必ず自分のグローバル IP に
 # 置き換えること: curl -s https://checkip.amazonaws.com
-endpoint_public_access_cidrs = ["203.0.113.10/32"]
+# endpoint_public_access_cidrs = ["203.0.113.10/32"]
 
 # --- Passport 関連 ---
 

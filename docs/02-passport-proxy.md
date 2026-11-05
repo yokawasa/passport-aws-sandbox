@@ -121,7 +121,9 @@ helm show values oci://ociregistry.usepassport.ai/passport/passport \
 
 **この Step が全体でもっとも詰まりやすい箇所**です。以下の順に進めてください。
 
-### Step 4-1. Postman Team ID を確認する
+### Step 4-1. Postman Team ID を設定する
+
+`values.yaml` に設定します。
 
 ```yaml
 bundle:
@@ -309,21 +311,44 @@ namespace:
 
 ### Step 4-7. 外部公開するなら併せて有効化を検討する（任意）
 
-インターネットに公開するため、以下も検討してください。
+**ここは未検証の項目を含みます。** 検証段階ではデフォルトのまま進め、必要になった
+時点で1つずつ有効化して Pod が起動するか確認することを推奨します。
 
 ```yaml
-bundle:
-  requireBundleClaims: true     # userId/teamId クレームを必須化し team を検証する
-  audience: "passport-proxy"    # aud をピン留めする
-
 rateLimit:
   enabled: true                 # /issue-cert への総当たり対策
   perToken: { rps: 10, burst: 20 }
 
 audit:
   sink: s3                      # stdout は Pod 再起動で消える
-  s3: { bucket: "my-audit-bucket", region: ap-northeast-1, prefix: passport-audit }
+  s3: { bucket: "my-audit-bucket", region: "ap-northeast-1", prefix: passport-audit }
 ```
+
+> **⚠️ `bundle.requireBundleClaims` は3点セットでないと Pod が起動しません。**
+>
+> 有効にするなら `audience` と `issuer` の**両方**を併せて設定する必要があります。
+> 片方だけ、あるいは両方欠けていると fail-closed で起動を拒否します。
+>
+> ```text
+> startup failed: config: PASSPORT_PROXY_REQUIRE_BUNDLE_CLAIMS requires both
+>   PASSPORT_PROXY_BUNDLE_AUDIENCE and PASSPORT_PROXY_BUNDLE_ISSUER to be set
+> ```
+>
+> **チャートの `values.yaml` にこの依存関係は書かれていません。** `issuer` /
+> `audience` はどちらも "optional" とだけコメントされており、制約はバイナリ側にのみ
+> 存在します。
+>
+> さらに `issuer` に入れるべき値（bundle JWT の `iss` クレーム）は、**実際に発行された
+> bundle をデコードしないと確認できません**。推測値を入れると Pod は起動するものの
+> `/issue-cert` が 403 を返すため、気づくのが遅れます（Team ID の取り違えと同じ失敗
+> パターン）。
+>
+> **検証段階では `requireBundleClaims: false`（デフォルト）のままを推奨します。**
+> 無効でも JWKS の署名検証と `allowedTeamIds` によるテナント固定は独立して効いており、
+> この設定は「クレームの存在を追加で強制する」ものです。
+>
+> 有効化する場合は、先にデフォルト設定で `passport login` を通し、取得した bundle の
+> `iss` を確認してから設定してください。
 
 > **`networkPolicy.enabled: true` は検証段階では見送りを推奨します。**
 > `values.yaml` のコメントにある通り、ポート単位の all-or-nothing な NetworkPolicy が
@@ -357,7 +382,7 @@ audit:
 
 ```bash
 helm install passport oci://ociregistry.usepassport.ai/passport/passport \
-  --version 0.6.0 -f values.yaml -n passport --dry-run
+  --version 0.6.0 -f values.yaml -n passport --dry-run=client
 ```
 
 `internet-facing` を選んでいるため、**public LB に関する警告が出るのは想定どおり**です
@@ -386,6 +411,23 @@ helm status passport -n passport
 
 両 Pod が `1/1 Running` / `RESTARTS 0`、リリースが `STATUS: deployed` になっていれば
 成功です。
+
+> **⚠️ `helm status` が `deployed` でも Pod が起動しているとは限りません。**
+>
+> このチャートは fail-closed 設計で、設定の不整合はインストール時ではなく
+> **Pod の起動時**に判明します。`CrashLoopBackOff` になっていたら、まずログで
+> 理由を見てください。
+>
+> ```bash
+> kubectl -n passport get pods
+> kubectl -n passport logs -l app.kubernetes.io/instance=passport --tail=20
+>
+> # 再起動済みで現在のログが空な場合は、落ちた側のコンテナを見る
+> kubectl -n passport logs <pod-name> --previous --tail=20
+> ```
+>
+> `startup failed: config: ...` で始まる1行が出ていれば、それが原因です。
+> よくあるものは [トラブルシューティング](troubleshooting.md#起動時)を参照してください。
 
 ```text
 NAME                         TYPE           EXTERNAL-IP                              PORT(S)

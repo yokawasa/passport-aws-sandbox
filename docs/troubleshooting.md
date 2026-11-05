@@ -227,7 +227,48 @@ aws sso login --profile my-aws-profile
 | Pod が起動しない | `bundle.allowedTeamIds` が空 | `jwksUrl` が設定済みで `allowedTeamIds` が空だと起動を拒否する仕様 |
 | ★ `revocation disabled` の WARN | `revocation.enabled: false` | 機能を使わないなら**正常**。無視してよい |
 | ★ `console auth disabled` の WARN | `console.enabled: false` | 同上。Console を使う場合のみ `user` と `passwordHash` を設定 |
+| ★ **`startup failed: config: PASSPORT_PROXY_REQUIRE_BUNDLE_CLAIMS requires both PASSPORT_PROXY_BUNDLE_AUDIENCE and PASSPORT_PROXY_BUNDLE_ISSUER to be set`** → CrashLoopBackOff | `bundle.requireBundleClaims: true` にしたが `audience` / `issuer` が未設定 | 3点セットで設定するか、`requireBundleClaims: false` に戻す（[下記](#requirebundleclaims-で-pod-が起動しない)） |
+| ★ `http: TLS handshake error from 10.x.x.x: EOF` がログに流れ続ける | NLB のヘルスチェックがクライアント証明書なしで :8443 を叩いている | **mTLS 必須なので正常**。Pod が `1/1 Running` なら無視してよい |
 | ★ Secrets Manager の解決が失敗する | IRSA が効いていない | **`helm upgrade` だけでは効かない。** webhook が Pod 作成時のみ env を注入するため `kubectl -n passport rollout restart deploy/passport-passport` が必要 |
+
+### requireBundleClaims で Pod が起動しない
+
+```text
+startup failed: config: PASSPORT_PROXY_REQUIRE_BUNDLE_CLAIMS requires both
+  PASSPORT_PROXY_BUNDLE_AUDIENCE and PASSPORT_PROXY_BUNDLE_ISSUER to be set
+```
+
+**原因**: `bundle.requireBundleClaims` を有効にするには `bundle.audience` と
+`bundle.issuer` の**両方**が必要です。片方だけだと fail-closed で起動を拒否します。
+
+**チャートの `values.yaml` にこの依存関係は記載されていません。** 両方とも
+"optional" とコメントされているだけで、制約はバイナリ側にのみ存在します。
+
+```bash
+# 実際に注入された env を確認する
+kubectl -n passport get deploy passport-passport -o json | \
+  python3 -c "import json,sys; [print(e['name'],'=',e.get('value')) \
+    for e in json.load(sys.stdin)['spec']['template']['spec']['containers'][0]['env'] \
+    if 'BUNDLE' in e['name'] or 'CLAIMS' in e['name']]"
+```
+
+**対処**: 検証段階では無効に戻すのが簡単です。
+
+```yaml
+bundle:
+  requireBundleClaims: false
+```
+
+```bash
+helm upgrade passport oci://ociregistry.usepassport.ai/passport/passport \
+  --version 0.6.0 -f values.yaml -n passport
+```
+
+無効でも JWKS の署名検証と `allowedTeamIds` によるテナント固定は独立して効きます。
+
+有効化したい場合は `issuer` に bundle JWT の `iss` クレームを設定しますが、**その値は
+実際に発行された bundle をデコードしないと確認できません**。推測値を入れると Pod は
+起動するのに `/issue-cert` が 403 を返すため、原因の特定が難しくなります。
 
 ## 接続時
 

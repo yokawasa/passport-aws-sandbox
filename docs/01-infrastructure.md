@@ -51,7 +51,7 @@ cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 
 | 変数 | example の値 | 備考 |
 | --- | --- | --- |
-| `endpoint_public_access_cidrs` | `["203.0.113.10/32"]` | **要変更。`kubectl` が叩く EKS API の公開範囲で、Passport の :8443 / :8081 とは無関係。** 変数の既定値は `0.0.0.0/0` なので、行ごと消すと全世界公開になる。接続元 IP が変わったら再 apply が必要 |
+| `endpoint_public_access_cidrs` | 未指定 | **要変更。`kubectl` が叩く EKS API の公開範囲で、Passport の :8443 / :8081 とは無関係。** デフォルトが未指定で、その場合、変数の既定値が `0.0.0.0/0` なので、全世界公開になる。接続元 IP が変わったら再 apply が必要 |
 | `passport_namespace` | `passport` | **Helm インストール時の `-n` と必ず一致させる。** ずれると IRSA の信頼関係が成立せず、Secrets Manager の解決が失敗する |
 | `passport_secret_prefix` | `passport/` | このプレフィックス配下のシークレットだけ Proxy が読める。無関係なシークレットへのアクセスを防ぐ |
 | `passport_create_demo_secret` | `true` | 検証用のダミートークンを作る。**実値が tfstate に残るので本番の認証情報は入れないこと。** 不要なら `false`（変数の既定値も `false`） |
