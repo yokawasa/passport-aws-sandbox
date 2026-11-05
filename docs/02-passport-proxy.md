@@ -442,11 +442,44 @@ ingress/passport       alb     passport-mgmt.example.com  k8s-passport-....elb.a
 
 ### 5-4. 起動ログを確認する
 
+> **⚠️ `--tail` を使わないでください。**
+>
+> 起動ログは**最初の数行**に出ます。一方 NLB のヘルスチェックが数秒おきに
+> `TLS handshake error` を吐き続けるため（[後述](#tls-handshake-error-は正常)）、
+> 数分後には数千行まで膨らみます。`--tail=30` ではヘルスチェックのノイズしか
+> 見えません。
+
+ノイズを除いて先頭から読みます。
+
 ```bash
-kubectl -n passport logs -l app.kubernetes.io/instance=passport --tail=30
+POD=$(kubectl -n passport get pods -l app.kubernetes.io/instance=passport \
+  -o jsonpath='{.items[0].metadata.name}')
+
+kubectl -n passport logs "$POD" | grep -v "TLS handshake error" | head -10
 ```
 
-ログは OTEL 形式の JSON で読みにくいですが、以下が出ていれば正常です。
+ログは OTEL 形式の JSON で読みにくいので、要点だけ抜き出すなら:
+
+```bash
+kubectl -n passport logs "$POD" | grep -v "TLS handshake error" \
+  | python3 -c 'import json,sys
+for l in sys.stdin:
+    try: d = json.loads(l)
+    except ValueError: continue
+    print(d["SeverityText"].ljust(5), d["Body"]["Value"])'
+```
+
+```text
+WARN  passport: revocation disabled (set PASSPORT_PROXY_REVOCATION_STORE, ...)
+INFO  passport: rate limiting enabled (in-memory per-pod)
+WARN  passport: console auth disabled (PASSPORT_PROXY_CONSOLE_USER and/or ... unset)
+INFO  passport: /issue-cert enabled
+INFO  passport: managed bootstrap disabled; /issue-cert requires a valid bundle
+INFO  starting management server
+INFO  starting HTTPS proxy
+```
+
+以下の3つが出ていれば正常です。
 
 | ログ | 意味 |
 | --- | --- |
@@ -459,7 +492,32 @@ kubectl -n passport logs -l app.kubernetes.io/instance=passport --tail=30
 ```text
 passport: revocation disabled (set PASSPORT_PROXY_REVOCATION_STORE, ...)
 passport: console auth disabled (PASSPORT_PROXY_CONSOLE_USER and/or ... unset)
+passport: managed bootstrap disabled; /issue-cert requires a valid bundle
 ```
+
+#### `TLS handshake error` は正常
+
+```text
+2026/11/05 08:03:21 http: TLS handshake error from 10.0.138.89:51114: EOF
+```
+
+**NLB のヘルスチェックがクライアント証明書なしで :8443 を叩いている**ため出ます。
+data plane は mTLS 必須なので、証明書を持たない接続が切られるのは設計どおりです。
+送信元 IP が VPC 内のプライベート IP（`10.x.x.x`）であることで確認できます。
+
+Pod が `1/1 Running` なら無視してください。**ログが埋まるのが邪魔な場合**は、
+ヘルスチェックを管理プレーン側に向けると減らせます。
+
+```yaml
+service:
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-port: "8081"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol: http
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-path: /readyz
+```
+
+> この annotation は未検証です。適用するなら Pod の起動と NLB のターゲットが
+> `healthy` のままであることを確認してください。
 
 ### 5-5. LB の DNS 名を取得する
 

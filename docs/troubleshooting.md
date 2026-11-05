@@ -228,7 +228,8 @@ aws sso login --profile my-aws-profile
 | ★ `revocation disabled` の WARN | `revocation.enabled: false` | 機能を使わないなら**正常**。無視してよい |
 | ★ `console auth disabled` の WARN | `console.enabled: false` | 同上。Console を使う場合のみ `user` と `passwordHash` を設定 |
 | ★ **`startup failed: config: PASSPORT_PROXY_REQUIRE_BUNDLE_CLAIMS requires both PASSPORT_PROXY_BUNDLE_AUDIENCE and PASSPORT_PROXY_BUNDLE_ISSUER to be set`** → CrashLoopBackOff | `bundle.requireBundleClaims: true` にしたが `audience` / `issuer` が未設定 | 3点セットで設定するか、`requireBundleClaims: false` に戻す（[下記](#requirebundleclaims-で-pod-が起動しない)） |
-| ★ `http: TLS handshake error from 10.x.x.x: EOF` がログに流れ続ける | NLB のヘルスチェックがクライアント証明書なしで :8443 を叩いている | **mTLS 必須なので正常**。Pod が `1/1 Running` なら無視してよい |
+| ★ `http: TLS handshake error from 10.x.x.x: EOF` がログに流れ続ける | NLB のヘルスチェックがクライアント証明書なしで :8443 を叩いている | **mTLS 必須なので正常**。Pod が `1/1 Running` なら無視してよい。[減らす方法](02-passport-proxy.md#tls-handshake-error-は正常) |
+| ★ 起動ログが見つからない（`--tail` がヘルスチェックで埋まる） | 起動ログは先頭の数行だが、`TLS handshake error` が数秒おきに追記され数千行になる | `--tail` を使わず `logs "$POD" \| grep -v "TLS handshake error" \| head` で先頭から読む（[手順](02-passport-proxy.md#5-4-起動ログを確認する)） |
 | ★ Secrets Manager の解決が失敗する | IRSA が効いていない | **`helm upgrade` だけでは効かない。** webhook が Pod 作成時のみ env を注入するため `kubectl -n passport rollout restart deploy/passport-passport` が必要 |
 
 ### requireBundleClaims で Pod が起動しない
