@@ -45,7 +45,7 @@ Passport は、API のシークレット（API キー、トークン）を**開�
 | 必要なもの | 入手方法 | 無いとどうなるか |
 | --- | --- | --- |
 | **レジストリ認証情報** | Passport の Registry 設定画面で発行 | イメージ・チャートが一切取得できない |
-| **Postman Team ID** | [Step 4-1](#step-4-1-postman-team-id-を確認する) | **Pod が起動を拒否する** |
+| **Postman Team ID** | [Step 4-1](#step-4-1-postman-team-id-を設定する) | **Pod が起動を拒否する** |
 | **CA 鍵 / reference 鍵** | 自分で生成（[Step 4-2](#step-4-2-ca-鍵と-reference-鍵の-secret-を作る)） | **Pod が起動を拒否する**。実鍵が無条件で要求される |
 | **IRSA ロール ARN** | 01 の `terraform output` | Secrets Manager の解決が失敗する |
 | **ACM 証明書 ARN** | 01 の Step 6 | 管理プレーンの Ingress が TLS 終端できない |

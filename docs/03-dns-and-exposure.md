@@ -413,14 +413,10 @@ Namespaces のセットアップが完了したら、チームを招待します
 
 ## Step 6. 開発者に案内する
 
-**伝えるのは実質2つだけです。** ポートフォワードの手順も、接続先 URL も要りません。
+**伝えるのは手順書の場所だけです** → [04-developer-setup.md](04-developer-setup.md)
 
-| 項目 | 値 |
-| --- | --- |
-| 手順書 | [04-developer-setup.md](04-developer-setup.md) |
-| Namespace ID | `<Namespace UUID>`（権限が乗らなかったときに使う） |
-
-開発者側は基本これだけで完了します。
+ポートフォワードの手順も、接続先 URL も、Namespace ID も要りません。開発者側は
+これだけで完了します。
 
 ```bash
 passport login          # setup まで自動実行される
@@ -455,7 +451,7 @@ passport setup \
 > 社内 Mac が MDM 管理下にある場合、配布している MDM プロファイルの
 > `ManagementURL` / `ProxyURL` も新しいホスト名に更新しないと、**引数で指定しても
 > 古い接続先が使われ続けます**。上の表の値と突き合わせて確認してください。詳細は
-> [04-developer-setup.md](04-developer-setup.md#エンドポイント解決の優先順位)を
+> [トラブルシューティング](troubleshooting.md#エンドポイント解決の優先順位)を
 > 参照してください。
 
 ---

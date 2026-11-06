@@ -6,6 +6,7 @@
 - [インストール時](#インストール時)
 - [起動時](#起動時)
 - [接続時](#接続時)
+- [開発者のセットアップ](#開発者のセットアップ)
 - [外部公開まわり](#外部公開まわり)
 - [internal LB にした場合の到達経路](#internal-lb-にした場合の到達経路)
 
@@ -284,13 +285,133 @@ helm upgrade passport oci://ociregistry.usepassport.ai/passport/passport \
 | ★ **502 `decrypt-failed`** / `failed to decrypt vault reference` | Access Proxy に **CA 鍵**の公開鍵を登録した（正しくは reference 鍵） | Access Proxy を作り直し、**secret reference も作り直す**。公開鍵は変更不可 |
 | ★ **403 `unauthorized`** / `not authorized for vault refs` | `--namespace-id` 未指定、または Namespace で secret が未紐付け | `passport setup --namespace-id <UUID>`。`whoami` の `allowedApiRefs` で確認 |
 | ★ `{{vault:...}}` が解決されない | Secrets Manager のキー名を書いている | **Passport 発行の UUID** を書く。証明書の `secretReference` で確認 |
-| ★ `error: unknown option '--endpoint'` | **CLI 0.7.0 以降で `--endpoint` は廃止**。対象は Namespace のリソース定義で決まる | `--namespace-id` だけを指定する（[手順](04-developer-setup.md#セットアップを実行する)） |
+| ★ `error: unknown option '--endpoint'` | **CLI 0.7.0 以降で `--endpoint` は廃止**。対象は Namespace のリソース定義で決まる | `--namespace-id` だけを指定する（[上記](#allowedapirefs-が-none-のまま)） |
 | ★ 証明書が `EXPIRED` になる | TTL は**最大 300 秒**（0.7.x で既定も 300） | `passport refresh` で再発行。`passport request` は自動更新する |
 | ★ `error: missing required argument 'url'` | `passport request` で URL をオプションの後ろに書いた | URL を第1引数に置く |
 | ★ `daemon install` 後も `HTTPS_PROXY` が効かない | 既存のターミナルには反映されない | 新しいターミナルを開く |
 | ★ MDM 設定が引数を上書きする | macOS managed plist が最優先 | IT 管理者にプロファイルの更新を依頼する |
 | Namespaces でリソースが一致しない | Manual 登録時のパスが不一致 | **パスまで完全一致**が必要。OTEL ログからの取り込みを推奨 |
 | ★ ログが出ない | replica 複数時はリクエストを処理した1台にしか出ない | 全 Pod のログを確認する |
+
+## 開発者のセットアップ
+
+`passport login` だけで済まない場合の対処です。通常は
+[04](04-developer-setup.md) の手順だけで完了します。
+
+### `allowedApiRefs` が `(none)` のまま
+
+secret reference の権限が証明書に乗っていません。`--namespace-id` を明示して
+setup をやり直します。
+
+```bash
+passport setup --namespace-id <Namespace UUID>
+```
+
+> **`--namespace-id` は何をするフラグか**
+>
+> ACS が **VIEW_NAMESPACE 権限を検証したうえで** bundle を発行し、使ってよい
+> secret reference が証明書に焼き込まれます。「どの Namespace か」の指定というより、
+> **権限チェックの対象を明示する**ものです。
+>
+> 本リポジトリの検証環境（admin ロール + Namespace が1つ）では、**指定しなくても
+> 権限が乗りました**（`~/.passport` を削除して `passport login` だけを実行した状態で
+> 確認）。アクセストークンに `namespace:view` が含まれ、対象が一意に決まるためと
+> 考えられます。一般メンバー権限や Namespace が複数ある環境では必要になる可能性が
+> あります。
+
+Namespace UUID は管理者から受け取るか、Passport Cloud の URL から取得します。
+
+```text
+https://app.usepassport.ai/namespaces/00000000-1111-2222-3333-444444444444
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+```
+
+それでも `(none)` なら、管理者側で Namespace のリソースと secret reference の
+紐付けが完了していません。
+
+### 接続先が意図しない Proxy になっている
+
+`--verbose` を付けると、どのエンドポイントにどの理由で接続するかが全部出ます。
+
+```bash
+passport setup --verbose
+```
+
+```text
+   managementHost = passport-mgmt.example.com
+     ✗ macOS managed plist        (not present)
+     ✗ --management-url           (not present)
+     ✗ PASSPORT_MGMT_HOST         (not present)
+     ✓ passport-service discovery ← used
+   proxyHost = passport-proxy.example.com
+     ...
+```
+
+#### エンドポイント解決の優先順位
+
+**MDM プロファイルがコマンドライン引数より強い**ことに注意してください。
+
+| 優先 | ソース | 備考 |
+| --- | --- | --- |
+| 1 | **macOS managed plist (MDM)** | **`--proxy-url` を指定しても上書きされる** |
+| 2 | `--management-url` / `--proxy-url` | コマンドライン引数 |
+| 3 | `PASSPORT_MGMT_HOST` / `PASSPORT_PROXY_HOST` | 環境変数 |
+| 4 | passport-service discovery | 自動解決 |
+
+```bash
+defaults read /Library/Managed\ Preferences/com.postman.passport
+```
+
+```text
+{
+    ManagementURL = "https://passport-mgmt.example.com";
+    ProxyURL = "https://passport-proxy.example.com:8443";
+    RoutingPolicy = { Mode = "forward-all"; Strict = 1; ... };
+}
+```
+
+**古いホスト名（または `localhost`）が入っている場合、引数では切り替えられません。**
+IT 管理者にプロファイルの更新を依頼してください。
+
+### URL を明示して setup する
+
+自動解決が効かない環境向けです（MDM 設定がない場合のみ有効）。
+
+```bash
+passport setup \
+  --management-url https://passport-mgmt.example.com \
+  --proxy-url https://passport-proxy.example.com:8443 \
+  --proxy-server-name passport-proxy.example.com
+```
+
+> `--management-url` を省略すると `--proxy-url` と同じ値が使われます。本構成では
+> **管理プレーンと data plane でホスト名が異なる**ため、明示する場合は両方指定して
+> ください。正しい値は管理者に確認してください（[03 の Step 6](03-dns-and-exposure.md#step-6-開発者に案内する)）。
+
+### setup の終了コード
+
+| コード | 意味 | 対処 |
+| --- | --- | --- |
+| `0` | 完全成功（証明書 + デーモン稼働） | — |
+| `1` | 失敗（証明書の取得に失敗） | `--verbose` で原因を確認する |
+| `2` | **部分成功**（証明書は取得できたがデーモンの起動に失敗） | `passport daemon status` で確認する |
+
+> コード `2` は「成功」ではありません。証明書はあるがデーモンが動いていないため、
+> 透過的なルーティングは機能しません。
+
+### setup の主なオプション
+
+| オプション | 用途 |
+| --- | --- |
+| `--namespace-id <id>` | Namespace UUID。`allowedApiRefs` が空のときに指定する |
+| `--ttl <seconds>` | 証明書の有効期間。**デフォルト 300 秒、範囲も 60〜300** |
+| `--proxy-server-name <host>` | SNI に使うホスト名。SAN 不一致の回避に使う |
+| `--management-url <url>` / `--proxy-url <url>` | 接続先の明示（省略時は自動解決） |
+| `--email` / `--user-id` / `--team-id` | ログイン中のプロファイルを上書きする |
+| `--no-daemon` | デーモンを起動せず `HTTPS_PROXY` も設定しない（CI / headless 向け） |
+| `--verbose` | エンドポイント解決の優先順位を全表示（`PASSPORT_DEBUG=1` でも有効） |
+
+---
 
 ## 外部公開まわり
 

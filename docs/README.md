@@ -139,4 +139,4 @@ Docker / Kubernetes / Helm / YAML / プライベートレジストリを一通�
 >
 > 以前の構成（`scheme: internal` + port-forward）から移行する場合、**LB の scheme は
 > immutable なので `helm upgrade` では切り替わりません**。Service の delete + 再作成が
-> 必要です。手順は [03-dns-and-exposure.md](03-dns-and-exposure.md#既存の-internal-nlb-から移行する場合) を参照してください。
+> 必要です（DNS 名も変わるため、Route53 の CNAME も貼り替えてください）。

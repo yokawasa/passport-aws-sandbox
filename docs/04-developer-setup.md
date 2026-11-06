@@ -11,17 +11,15 @@ Passport CLI をインストールし、secret reference を使って API を叩
 > ドメインで公開されているため CLI から直接接続できます。**kubectl や EKS への
 > アクセス権も必要ありません。**
 
-## 管理者から受け取る情報
+## 事前に必要なもの
 
-| 項目 | 値の例 |
-| --- | --- |
-| Management URL | `https://passport-mgmt.example.com` |
-| Proxy URL | `https://passport-proxy.example.com:8443` |
-| **Namespace ID** | `00000000-1111-2222-3333-444444444444` |
+**この手順書以外に受け取るものはありません。** 接続先の URL も Namespace ID も、
+`passport login` が自動で解決します。
 
-> URL は通常 `passport login` 後に**自動で解決される**ため、受け取らなくても済むことが
-> 多いです。**Namespace ID も不要な場合がありますが**（[Step 4](#step-4-セットアップする)）、
-> 権限が乗らなかったときに必要になるので受け取っておくと確実です。
+必要なのは次の2つだけです。
+
+- Postman アカウント（Passport Cloud のチームに招待されていること）
+- CLI をインストールできる権限（macOS なら管理者パスワード）
 
 ---
 
@@ -113,125 +111,10 @@ passport login
 passport auth status
 ```
 
-## Step 4. セットアップする (Optional)
-
-**多くの場合このステップは不要です。** `passport login` が setup まで自動実行し、
-その時点で secret reference の権限も証明書に乗るためです。まず Step 3 のあとに
-`passport whoami` を実行し、`allowedApiRefs` にリソースが出ていれば**ここは飛ばして
-Step 6 へ進めます**。
-
-実行が必要になるのは次の場合です。
-
-- `whoami` の `allowedApiRefs` が `(none)` のまま（`--namespace-id` を明示する）
-- `--no-setup` を付けてログインした
-- 接続先の URL が自動解決されない（MDM 設定がない環境で明示する）
-
-> **`--namespace-id` を付けると何が起きるか**
->
-> ACS が **VIEW_NAMESPACE 権限を検証したうえで** bundle を発行し、使ってよい
-> secret reference が証明書に焼き込まれます。つまりこのフラグは「どの Namespace か」
-> の指定というより、**権限チェックの対象を明示する**ものです。
->
-> **本リポジトリの検証環境（admin ロール + Namespace が1つ）では、`--namespace-id`
-> なしでも権限が乗りました**（`~/.passport` を削除して `passport login` だけを実行した
-> 状態で確認）。アクセストークンに `namespace:view` が含まれ、対象が一意に決まるため
-> と考えられます。一般メンバー権限や Namespace が複数ある環境では挙動が異なる
-> 可能性があるので、**`whoami` で確認してから判断してください**。
-
-### まず接続先を確認する
-
-**`--verbose` を付けると、どのエンドポイントにどの理由で接続するかが全部出ます。**
-意図しない Proxy に向いていないか先に確認してください。
-
-```bash
-passport setup --verbose
-```
-
-出力例
-```text
-   managementHost = passport-mgmt.example.com
-     ✗ macOS managed plist        (not present)
-     ✗ --management-url           (not present)
-     ✗ PASSPORT_MGMT_HOST         (not present)
-     ✓ passport-service discovery ← used
-   proxyHost = passport-proxy.example.com
-     ✗ macOS managed plist        (not present)
-     ✗ --proxy-url                (not present)
-     ✗ PASSPORT_PROXY_HOST        (not present)
-     ✓ passport-service discovery ← used
-   proxyServerName = passport-proxy.example.com
-     ✗ --proxy-server-name        (not present)
-     ✓ default: proxy hostname    ← used
-
- passport setup
- ──────────────────────────────────────────
-   host         passport-mgmt.example.com
-   proxy        passport-proxy.example.com:8443
-   user         yoichi.kawasaki@example.com  (userId=user_01M391ERCKN5QDJYNYT42BJ8HX  teamId=org_01M    391H68AJCPBQ9G6WGEWS1Z3)
-   bundle via   passport-service /api/v3/bundles/issue (server-signed ES256)
-   cert ttl     300s
- ──────────────────────────────────────────
-```
-
-### ⚠️ エンドポイント解決の優先順位
-
-上の出力が示す通り、**MDM プロファイルがコマンドライン引数より強い**です。
-
-| 優先 | ソース | 備考 |
-| --- | --- | --- |
-| 1 | **macOS managed plist (MDM)** | **`--proxy-url` を指定しても上書きされる** |
-| 2 | `--management-url` / `--proxy-url` | コマンドライン引数 |
-| 3 | `PASSPORT_MGMT_HOST` / `PASSPORT_PROXY_HOST` | 環境変数 |
-| 4 | passport-service discovery | 自動解決 |
-
-```bash
-defaults read /Library/Managed\ Preferences/com.postman.passport
-```
-
-```text
-{
-    ManagementURL = "https://passport-mgmt.example.com";
-    ProxyURL = "https://passport-proxy.example.com:8443";
-    RoutingPolicy = { Mode = "forward-all"; Strict = 1; ... };
-}
-```
-
-**古いホスト名（または `localhost`）が入っている場合、引数では切り替えられません。**
-IT 管理者にプロファイルの更新を依頼してください。
-
-### セットアップを実行する
-
-```bash
-passport setup --namespace-id <Namespace UUID>
-```
-
-URL が自動解決されない場合は明示します（MDM 設定がない場合のみ有効）。
-
-```bash
-passport setup \
-  --management-url https://passport-mgmt.example.com \
-  --proxy-url https://passport-proxy.example.com:8443 \
-  --proxy-server-name passport-proxy.example.com \
-  --namespace-id <Namespace UUID>
-```
-
-> `--management-url` を省略すると `--proxy-url` と同じ値が使われます。本構成では
-> **管理プレーンと data plane でホスト名が異なる**ため、明示する場合は両方指定して
-> ください。
-
-> **⚠️ CLI 0.7.0 以降で `--endpoint` は廃止されました。**
->
-> ```text
-> error: unknown option '--endpoint'
-> ```
->
-> 対象エンドポイントは Namespace 側のリソース定義で決まるため、CLI から指定する
-> 必要がなくなりました。`--namespace-id` だけを指定してください。
-
-### 権限が乗ったかを `whoami` で確認する
+## Step 4. 権限が乗ったか確認する
 
 secret reference を使う権限は、クライアント証明書に焼き込まれます。**乗っていなくても
-setup / login 自体は成功してしまう**ため、必ず確認してください。
+`login` 自体は成功してしまう**ため、必ず確認してください。
 
 ```bash
 passport whoami
@@ -251,13 +134,15 @@ Passport identity:
   notAfter     2026-01-01T00:05:00.000Z  (valid for 85s)
 ```
 
-**`allowedApiRefs  (none)` のままなら権限が乗っていません。** `--namespace-id` を
-付けて setup をやり直すか、管理者側の紐付けが未完了でないか確認してください。
+**`allowedApiRefs` にリソースが出ていれば完了です。** Step 5 へ進んでください。
 
-> **そのまま使える `{{vault:...}}` が表示されます。** 6-2 で使う参照はここから
+> **そのまま使える `{{vault:...}}` が表示されます。** Step 5 で使う参照はここから
 > コピーできるので、UUID を別途調べる必要はありません。
 
-生の内容は `--json` で確認できます（CLI 0.7.0 以降）。
+`allowedApiRefs` が `(none)` のまま、あるいは接続できない場合は
+[トラブルシューティング](troubleshooting.md#開発者のセットアップ)を参照してください。
+
+JSON で見たい場合（CLI 0.7.0 以降）:
 
 ```bash
 passport whoami --json
@@ -271,51 +156,12 @@ passport whoami --json
  "notBefore":"...","notAfter":"...","validity":"VALID"}
 ```
 
-`allowedApiRefs` が `{}` なら権限なし、リソースはあるが配列が `[]` なら secret
-reference が未紐付けです。**`validity` が `EXPIRED` なら** `passport refresh` で
-再発行してください（TTL は最大 300 秒）。
+**`validity` が `EXPIRED` なら** `passport refresh` で再発行してください
+（TTL は最大 300 秒）。
 
-### 主なオプション
+## Step 5. Passport 経由の通信を確認する
 
-| オプション | 用途 |
-| --- | --- |
-| **`--namespace-id <id>`** | Namespace UUID。ACS が VIEW_NAMESPACE 権限を検証して bundle を発行する。`allowedApiRefs` が空のときに指定する |
-| `--ttl <seconds>` | 証明書の有効期間。**デフォルト 300 秒、指定できる範囲も 60〜300** |
-| `--proxy-server-name <host>` | SNI に使うホスト名。SAN 不一致の回避に使う |
-| `--management-url <url>` / `--proxy-url <url>` | 接続先の明示（省略時は自動解決） |
-| `--email` / `--user-id` / `--team-id` | ログイン中のプロファイルを上書きする |
-| `--no-daemon` | デーモンを起動せず `HTTPS_PROXY` も設定しない（CI / headless 向け） |
-| `--verbose` | エンドポイント解決の優先順位を全表示（`PASSPORT_DEBUG=1` でも有効） |
-
-> 証明書の TTL は**最大 300 秒**です。切れたら `passport refresh` で再発行できます
-> （デーモンには触りません）。`passport request` は自動更新するので通常は不要です。
-
-### 終了コードの意味
-
-| コード | 意味 | 対処 |
-| --- | --- | --- |
-| `0` | 完全成功（証明書 + デーモン稼働） | — |
-| `1` | 失敗（証明書の取得に失敗） | `--verbose` で原因を確認する |
-| `2` | **部分成功**（証明書は取得できたがデーモンの起動に失敗） | `passport daemon status` で確認する |
-
-> コード `2` は「成功」ではありません。証明書はあるがデーモンが動いていないため、
-> 透過的なルーティングは機能しません。
-
-## Step 5. セットアップを確認する
-
-```bash
-passport whoami          # 証明書内の identity を表示
-passport daemon status   # デーモンの稼働状態、証明書の有効期限、upstream への到達性
-passport ca status       # OS の信頼ストアに CA が入っているか
-```
-
-`passport daemon status` は3つをまとめて確認できるため、**最初に見るべきコマンド**です。
-
----
-
-## Step 6. Passport 経由の通信を確認する
-
-### 6-1. まず素のリクエストで疎通を確認する
+### 5-1. まず素のリクエストで疎通を確認する
 
 ```bash
 passport request https://httpbin.org/get --show-headers
@@ -330,7 +176,7 @@ aws ec2 describe-nat-gateways --region ap-northeast-1 \
   --query 'NatGateways[].NatGatewayAddresses[].PublicIp'
 ```
 
-### 6-2. secret reference を使う
+### 5-2. secret reference を使う
 
 **`{{vault:...}}` に書くのは Passport が発行した UUID です。**
 Secrets Manager のキー名ではありません。
@@ -377,7 +223,7 @@ passport request https://httpbin.org/anything/test \
 > 入るとワイルドカード（`/anything/*` など）でしか一致させられません。
 > ヘッダーに入れるのがもっとも確実です。
 
-### 6-3. エラーの切り分け
+### 5-3. エラーの切り分け
 
 | 応答 | `x-passport-proxy-error` | 原因 |
 | --- | --- | --- |
@@ -394,6 +240,13 @@ passport request https://httpbin.org/anything/test \
 | `-d, --data <body>` | リクエストボディ |
 | `--show-headers` | レスポンスのステータスとヘッダーも表示 |
 | `--insecure-proxy-hostname` | 外側 TLS のホスト名検証をスキップ（証明書チェーンの検証は継続） |
+
+---
+
+## Step 6. アクセスをリクエストする
+
+Passport Cloud にサインインし、必要なエンドポイントへのアクセスをリクエストします。
+管理者の承認後、secret reference が使えるようになります。
 
 ---
 
@@ -469,13 +322,6 @@ passport
 | `--no-animation` | モーションエフェクトを無効化 |
 | `--ascii` | ASCII のみで描画 |
 | `--color <value>` | `auto` / `on` / `off` |
-
-## Step 7. アクセスをリクエストする
-
-Passport Cloud にサインインし、必要なエンドポイントへのアクセスをリクエストします。
-管理者の承認後、secret reference が使えるようになります。
-
----
 
 ## 完了の確認
 
