@@ -281,16 +281,9 @@ kubectl -n passport get deploy passport-passport -o jsonpath=\
 
 次の Step 5-2 で使う値を準備します。**ここが全体でもっとも間違えやすい箇所です。**
 
-> **用語: 「Access Proxy」と「Passport Proxy」は別のものを指します。**
->
-> | 用語 | 実体 | どこにあるか |
-> | --- | --- | --- |
-> | **Passport Proxy** | 02 でデプロイした Pod 本体（`passport-passport`） | 自分の EKS クラスタ |
-> | **Access Proxy** | その Proxy を Passport Cloud に**登録したエントリ** | Passport Cloud の UI |
->
-> Passport Cloud の画面では **Team Settings → Access Proxies** という名前なので、
-> 本書も UI の表記に合わせています。Step 4〜5-2 で扱うのは「Cloud 側の登録情報」
-> であって、Pod の設定ではありません。
+> **補足**: Access Proxy は Passport の Proxy のことで、Passport Cloud UI 上での
+> 呼び名です。画面では **Team Settings → Access Proxies** という名前なので、ここでは
+> UI の表記に合わせています。
 
 ### 4-1. 登録するのは reference 鍵の公開鍵
 
