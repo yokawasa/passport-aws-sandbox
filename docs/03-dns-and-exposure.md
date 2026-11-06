@@ -28,6 +28,8 @@ Route53 に CNAME を切ってホスト名を確定させ、`helm upgrade` で�
 export AWS_PROFILE=my-aws-profile   # 環境に合わせる
 export HOSTED_ZONE_ID=Z0123456789ABCDEFGHIJ               # example.com
 export DOMAIN=example.com
+export MGMT_HOST=passport-mgmt
+export PROXY_HOST=passport-proxy
 
 # 02 の Step 5-5 で取得した LB の DNS 名
 NLB_DNS=$(kubectl -n passport get svc passport-passport \
@@ -55,7 +57,7 @@ aws route53 change-resource-record-sets \
       {
         \"Action\": \"UPSERT\",
         \"ResourceRecordSet\": {
-          \"Name\": \"passport-proxy.$DOMAIN\",
+          \"Name\": \"$PROXY_HOST.$DOMAIN\",
           \"Type\": \"CNAME\",
           \"TTL\": 300,
           \"ResourceRecords\": [{\"Value\": \"$NLB_DNS\"}]
@@ -64,7 +66,7 @@ aws route53 change-resource-record-sets \
       {
         \"Action\": \"UPSERT\",
         \"ResourceRecordSet\": {
-          \"Name\": \"passport-mgmt.$DOMAIN\",
+          \"Name\": \"$MGMT_HOST.$DOMAIN\",
           \"Type\": \"CNAME\",
           \"TTL\": 300,
           \"ResourceRecords\": [{\"Value\": \"$ALB_DNS\"}]
@@ -84,8 +86,8 @@ aws route53 change-resource-record-sets \
 ### 1-3. 伝播を確認する
 
 ```bash
-dig +short passport-proxy.$DOMAIN
-dig +short passport-mgmt.$DOMAIN
+dig +short $PROXY_HOST.$DOMAIN
+dig +short $MGMT_HOST.$DOMAIN
 ```
 
 CNAME の先のグローバル IP が返れば OK です。TTL 300 なので通常すぐ反映されます。
@@ -167,19 +169,69 @@ curl -s -o /dev/null -w '%{http_code}\n' "$MGMT/console"
 > `/readyz` は ALB のヘルスチェックには使われますが、`paths` に入れていないので
 > 外部からは到達できません。これは意図した状態です。
 
-### 3-3. 内部からヘルスチェックを確認する
+### 3-3. ヘルスチェックを確認する
 
-`/readyz` は外部非公開なので、クラスタ内から確認します。
+`/readyz` は外部に公開していないので、**Pod の `READY` 列で判断します**。
 
 ```bash
-kubectl -n passport exec deploy/passport-passport -- \
-  wget -qO- http://localhost:8081/readyz 2>/dev/null \
-  || kubectl -n passport logs -l app.kubernetes.io/instance=passport --tail=5
+kubectl -n passport get pods -l app.kubernetes.io/instance=passport
 ```
 
-> イメージは distroless で shell も curl も入っていないため、`exec` が使えない場合が
-> あります。その場合は Pod の `READY` 状態（`kubectl get pods`）で判断してください。
-> readiness probe が `/readyz` を叩いているので、`1/1 Running` なら合格しています。
+```text
+NAME                                 READY   STATUS    RESTARTS   AGE
+passport-passport-5779ff65fb-b6t6f   1/1     Running   0          10m
+passport-passport-5779ff65fb-m4rqp   1/1     Running   0          10m
+```
+
+**`READY` が `1/1` なら `/readyz` は合格しています。** kubelet が readiness probe で
+10秒おきに `/readyz` を叩いており、失敗すると `0/1` に落ちるためです。probe の設定は
+こう確認できます。
+
+```bash
+kubectl -n passport get deploy passport-passport \
+  -o jsonpath='{.spec.template.spec.containers[0].readinessProbe}'; echo
+```
+
+```text
+{"failureThreshold":3,"httpGet":{"path":"/readyz","port":"mgmt","scheme":"HTTP"},
+ "initialDelaySeconds":3,"periodSeconds":10,"successThreshold":1,"timeoutSeconds":1}
+```
+
+`0/1` のままなら、probe の失敗理由が Events に出ます。
+
+```bash
+kubectl -n passport describe pod -l app.kubernetes.io/instance=passport | grep -A10 "^Events:"
+```
+
+> **⚠️ `kubectl exec` でコンテナ内から叩くことはできません。**
+>
+> イメージは distroless で、シェルも `curl` も `wget` も入っていません。
+>
+> ```text
+> OCI runtime exec failed: exec failed: unable to start container process:
+>   exec: "wget": executable file not found in $PATH
+> ```
+>
+> `/readyz` の中身（どのチェックが落ちているか）を見たい場合は、一時的に別の Pod を
+> 立ててクラスタ内から Service を叩きます。
+>
+> ```bash
+> kubectl -n passport run curl-tmp --rm -it --restart=Never \
+>   --image=curlimages/curl -- \
+>   curl -s http://passport-passport-mgmt:8081/readyz
+> ```
+>
+> ```json
+> {"status":"ready","checks":[
+>   {"name":"signing_key_loaded","ready":true},
+>   {"name":"data_plane_listener_up","ready":true},
+>   {"name":"audit_sink_initialized","ready":true},
+>   {"name":"startup_complete","ready":true}]}
+> ```
+>
+> `ready":false` のチェック名が、そのまま原因の切り分けに使えます
+> （例: `signing_key_loaded` が false なら CA 鍵の Secret を疑う）。
+> `--rm` を付けているので Pod は終了時に削除されます。
 
 ### 3-4. data plane の TLS と SAN を確認する
 
@@ -399,6 +451,7 @@ passport setup \
 ## 完了の確認
 
 - [ ] `dig` で両ホスト名がグローバル IP に解決される
+- [ ] 両 Pod が `READY 1/1`（= `/readyz` 合格）
 - [ ] `curl $MGMT/ca.pem` が証明書を返す
 - [ ] `curl $MGMT/metrics` が **404** を返す（allowlist が効いている）
 - [ ] data plane の証明書 SAN に data plane の FQDN が含まれる
