@@ -20,8 +20,8 @@ Passport CLI をインストールし、secret reference を使って API を叩
 | **Namespace ID** | `00000000-1111-2222-3333-444444444444` |
 
 > URL は通常 `passport login` 後に**自動で解決される**ため、受け取らなくても済むことが
-> 多いです。ただし **`--namespace-id` は secret reference を使うなら必須**なので、
-> Namespace ID は必ず受け取ってください。
+> 多いです。**Namespace ID も不要な場合がありますが**（[Step 4](#step-4-セットアップする)）、
+> 権限が乗らなかったときに必要になるので受け取っておくと確実です。
 
 ---
 
@@ -115,8 +115,28 @@ passport auth status
 
 ## Step 4. セットアップする
 
-**secret reference を使うなら、このステップは必須です。**
-Step 3 の自動セットアップでは `--namespace-id` が指定されないためです。
+**多くの場合このステップは不要です。** `passport login` が setup まで自動実行し、
+その時点で secret reference の権限も証明書に乗るためです。まず Step 3 のあとに
+`passport whoami` を実行し、`allowedApiRefs` にリソースが出ていれば**ここは飛ばして
+Step 6 へ進めます**。
+
+実行が必要になるのは次の場合です。
+
+- `whoami` の `allowedApiRefs` が `(none)` のまま（`--namespace-id` を明示する）
+- `--no-setup` を付けてログインした
+- 接続先の URL が自動解決されない（MDM 設定がない環境で明示する）
+
+> **`--namespace-id` を付けると何が起きるか**
+>
+> ACS が **VIEW_NAMESPACE 権限を検証したうえで** bundle を発行し、使ってよい
+> secret reference が証明書に焼き込まれます。つまりこのフラグは「どの Namespace か」
+> の指定というより、**権限チェックの対象を明示する**ものです。
+>
+> **本リポジトリの検証環境（admin ロール + Namespace が1つ）では、`--namespace-id`
+> なしでも権限が乗りました**（`~/.passport` を削除して `passport login` だけを実行した
+> 状態で確認）。アクセストークンに `namespace:view` が含まれ、対象が一意に決まるため
+> と考えられます。一般メンバー権限や Namespace が複数ある環境では挙動が異なる
+> 可能性があるので、**`whoami` で確認してから判断してください**。
 
 ### まず接続先を確認する
 
@@ -208,15 +228,16 @@ passport setup \
 > 対象エンドポイントは Namespace 側のリソース定義で決まるため、CLI から指定する
 > 必要がなくなりました。`--namespace-id` だけを指定してください。
 
-### ⚠️ secret reference を使うなら `--namespace-id` が必須
+### 権限が乗ったかを `whoami` で確認する
 
-`--namespace-id` を付けて setup すると、**どの secret reference を使ってよいかの権限が
-クライアント証明書に焼き込まれます**。付け忘れても setup 自体は成功してしまうため、
-**権限が実際に乗ったかを `whoami` で確認します**。
+secret reference を使う権限は、クライアント証明書に焼き込まれます。**乗っていなくても
+setup / login 自体は成功してしまう**ため、必ず確認してください。
 
 ```bash
 passport whoami
 ```
+
+出力例
 
 ```text
 Passport identity:
@@ -231,7 +252,7 @@ Passport identity:
 ```
 
 **`allowedApiRefs  (none)` のままなら権限が乗っていません。** `--namespace-id` を
-付け忘れているか、管理者側の紐付けが未完了です。
+付けて setup をやり直すか、管理者側の紐付けが未完了でないか確認してください。
 
 > **そのまま使える `{{vault:...}}` が表示されます。** 6-2 で使う参照はここから
 > コピーできるので、UUID を別途調べる必要はありません。
@@ -258,7 +279,7 @@ reference が未紐付けです。**`validity` が `EXPIRED` なら** `passport 
 
 | オプション | 用途 |
 | --- | --- |
-| **`--namespace-id <id>`** | Namespace UUID。**secret reference を使うなら必須** |
+| **`--namespace-id <id>`** | Namespace UUID。ACS が VIEW_NAMESPACE 権限を検証して bundle を発行する。`allowedApiRefs` が空のときに指定する |
 | `--ttl <seconds>` | 証明書の有効期間。**デフォルト 300 秒、指定できる範囲も 60〜300** |
 | `--proxy-server-name <host>` | SNI に使うホスト名。SAN 不一致の回避に使う |
 | `--management-url <url>` / `--proxy-url <url>` | 接続先の明示（省略時は自動解決） |
@@ -300,8 +321,7 @@ passport ca status       # OS の信頼ストアに CA が入っているか
 passport request https://httpbin.org/get --show-headers
 ```
 
-応答の `origin` が **Proxy が動いているネットワークの外向き IP**（AWS なら NAT Gateway
-の IP）になっていれば、確かに Proxy を経由しています。
+応答の `origin` が **Proxy が動いているネットワークの外向き IP**（AWS なら NAT Gatewayの IP）になっていれば、確かに Proxy を経由しています。
 
 ```bash
 # 管理者が照合する場合
