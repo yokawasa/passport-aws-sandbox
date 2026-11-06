@@ -210,17 +210,31 @@ passport setup \
 
 ### ⚠️ secret reference を使うなら `--namespace-id` が必須
 
+`--namespace-id` を付けて setup すると、**どの secret reference を使ってよいかの権限が
+クライアント証明書に焼き込まれます**。付け忘れても setup 自体は成功してしまうため、
+**権限が実際に乗ったかを `whoami` で確認します**。
+
 ```bash
 passport whoami
 ```
 
 ```text
-allowedApiRefs
-  GET httpbin.org/anything/*
+Passport identity:
+  userId       user_01EXAMPLE...
+  teamId       org_01EXAMPLE...
+  allowedApiRefs
+    GET httpbin.org/anything/*
+      - httpbin-token  (aws)  →  {{vault:aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee}}
+
+  notBefore    2026-01-01T00:00:00.000Z
+  notAfter     2026-01-01T00:05:00.000Z  (valid for 85s)
 ```
 
 **`allowedApiRefs  (none)` のままなら権限が乗っていません。** `--namespace-id` を
 付け忘れているか、管理者側の紐付けが未完了です。
+
+> **そのまま使える `{{vault:...}}` が表示されます。** 6-2 で使う参照はここから
+> コピーできるので、UUID を別途調べる必要はありません。
 
 生の内容は `--json` で確認できます（CLI 0.7.0 以降）。
 
@@ -306,11 +320,12 @@ Secrets Manager のキー名ではありません。
 | Namespace の **vault key** 欄（管理者が設定） | `passport/demo/httpbin-token`（Secrets Manager のキー名） |
 | **`{{vault:...}}`**（開発者が書く） | `aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee`（Passport 発行の UUID） |
 
-UUID は `whoami` で確認できます。
+使える参照は Step 4 の `passport whoami` にそのままの形で出ています。
 
-```bash
-passport whoami --json | python3 -m json.tool
-# → "secretReference": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+```text
+  allowedApiRefs
+    GET httpbin.org/anything/*
+      - httpbin-token  (aws)  →  {{vault:aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee}}
 ```
 
 秘密はヘッダーに入れるのが実用的です。
@@ -336,9 +351,11 @@ passport request https://httpbin.org/anything/test \
 > **URL は第1引数に置いてください。**
 > オプションより後ろに書くと `error: missing required argument 'url'` になります。
 >
-> **vault 参照をパスに埋めるのは避けてください。**
-> 解決後のパスが秘密の値そのものになるため、Namespace 側に事前登録できません
-> （パスが一致せず弾かれます）。ヘッダーかボディに入れてください。
+> **`{{vault:...}}` はヘッダー / ボディ / URL / クエリパラメータのいずれにも書けます**
+> （CLI のヘルプに明記されています）。ただしパスに埋める場合、**解決後のパスが
+> リソース定義と一致する必要がある**点に注意してください。秘密の値そのものがパスに
+> 入るとワイルドカード（`/anything/*` など）でしか一致させられません。
+> ヘッダーに入れるのがもっとも確実です。
 
 ### 6-3. エラーの切り分け
 
