@@ -245,13 +245,13 @@ openssl s_client -connect "$PROXY_FQDN:8443" -servername "$PROXY_FQDN" </dev/nul
 ```
 
 ```text
-subject= /CN=passport-proxy/O=Passport/OU=passport
-notBefore=Jan  1 00:00:00 2025 GMT
-notAfter=Jan  1 00:00:00 2030 GMT
             X509v3 Subject Alternative Name:
-                IP Address:127.0.0.1, DNS:passport-proxy.example.com,
-                DNS:localhost, DNS:passport-proxy
+                IP Address:127.0.0.1, DNS:passport-proxy.example.com, DNS:localhost, DNS:passport-proxy
 ```
+
+> **`openssl x509 -ext subjectAltName` のほうが簡潔ですが、macOS 標準の openssl
+> （LibreSSL）には `-ext` がありません**（`unknown option -ext` になります）。
+> `-text | grep` はどちらでも動くので、こちらを使っています。
 
 **`DNS:passport-proxy.example.com` が含まれていることを確認してください。**
 
