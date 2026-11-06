@@ -133,7 +133,7 @@ Docker / Kubernetes / Helm / YAML / プライベートレジストリを一通�
 | EKS クラスタ | Amazon EKS 1.33 / ap-northeast-1（クラスタ名は `<project>-<environment>`。既定では `passport-sandbox-dev`） |
 | Helm チャート | `passport-0.6.0` |
 | イメージ | `passport-proxy:v0.6.0` |
-| CLI | `0.6.0-canary-260921-212749` / macOS arm64 |
+| CLI | `0.7.2` / macOS arm64 |
 
 > **ポートフォワード構成からの移行について**
 >

@@ -38,19 +38,20 @@ uname -m
 - `arm64` → Apple シリコン
 - `x86_64` → Intel
 
-**Apple シリコンの場合:**
-
 ```bash
+# インストールするバージョン（管理者に確認。本書は 0.7.2 で検証）
+PASSPORT_VERSION=0.7.2
+
+# Apple シリコンなら osx_arm64、Intel なら osx_64
+ARCH=$([ "$(uname -m)" = arm64 ] && echo osx_arm64 || echo osx_64)
+
 curl -fL -o ~/Downloads/passport.pkg \
-  "https://dl-passport.pstmn.io/download/version/0.6.0-canary-260921-212749/osx_arm64?channel=canary"
+  "https://dl-passport.pstmn.io/download/version/$PASSPORT_VERSION/$ARCH"
 ```
 
-**Intel の場合:**
-
-```bash
-curl -fL -o ~/Downloads/passport.pkg \
-  "https://dl-passport.pstmn.io/download/version/0.6.0-canary-260921-212749/osx_64?channel=canary"
-```
+> リリースチャネルによっては URL に `?channel=canary` が必要です（例:
+> `.../0.6.0-canary-260921-212749/osx_arm64?channel=canary`）。配布方法は
+> 管理者に確認してください。
 
 インストールします（管理者パスワードの入力を求められます）。
 
@@ -61,7 +62,7 @@ sudo installer -pkg ~/Downloads/passport.pkg -target /
 ### Windows (PowerShell)
 
 ```powershell
-curl.exe -fL -o $env:USERPROFILE\Downloads\passport.msi "https://dl-passport.pstmn.io/download/version/0.6.0-canary-260921-212749/win_64?channel=canary"
+curl.exe -fL -o $env:USERPROFILE\Downloads\passport.msi "https://dl-passport.pstmn.io/download/version/0.7.2/win_64"
 ```
 
 ```powershell
@@ -77,11 +78,8 @@ passport --version
 ```
 
 ```text
-0.6.0-canary-260921-212749
+0.7.2
 ```
-
-> **注意**: 公式手順には `passport version` と書かれていますが、**正しくは
-> `passport --version`（または `-v`）** です。
 
 ## Step 2. 現在の状態を確認する（任意）
 
@@ -129,12 +127,30 @@ Step 3 の自動セットアップでは `--namespace-id` が指定されない�
 passport setup --verbose
 ```
 
+出力例
 ```text
-managementHost = passport-mgmt.example.com
-  ✓ macOS managed plist        ← used
-  · --management-url           (skipped, higher source matched)
-  · PASSPORT_MGMT_HOST         (skipped, higher source matched)
-  · passport-service discovery (skipped, higher source matched)
+   managementHost = passport-mgmt.example.com
+     ✗ macOS managed plist        (not present)
+     ✗ --management-url           (not present)
+     ✗ PASSPORT_MGMT_HOST         (not present)
+     ✓ passport-service discovery ← used
+   proxyHost = passport-proxy.example.com
+     ✗ macOS managed plist        (not present)
+     ✗ --proxy-url                (not present)
+     ✗ PASSPORT_PROXY_HOST        (not present)
+     ✓ passport-service discovery ← used
+   proxyServerName = passport-proxy.example.com
+     ✗ --proxy-server-name        (not present)
+     ✓ default: proxy hostname    ← used
+
+ passport setup
+ ──────────────────────────────────────────
+   host         passport-mgmt.example.com
+   proxy        passport-proxy.example.com:8443
+   user         yoichi.kawasaki@example.com  (userId=user_01M391ERCKN5QDJYNYT42BJ8HX  teamId=org_01M    391H68AJCPBQ9G6WGEWS1Z3)
+   bundle via   passport-service /api/v3/bundles/issue (server-signed ES256)
+   cert ttl     300s
+ ──────────────────────────────────────────
 ```
 
 ### ⚠️ エンドポイント解決の優先順位
@@ -166,9 +182,7 @@ IT 管理者にプロファイルの更新を依頼してください。
 ### セットアップを実行する
 
 ```bash
-passport setup \
-  --namespace-id <Namespace UUID> \
-  --endpoint httpbin.org
+passport setup --namespace-id <Namespace UUID>
 ```
 
 URL が自動解決されない場合は明示します（MDM 設定がない場合のみ有効）。
@@ -178,17 +192,23 @@ passport setup \
   --management-url https://passport-mgmt.example.com \
   --proxy-url https://passport-proxy.example.com:8443 \
   --proxy-server-name passport-proxy.example.com \
-  --namespace-id <Namespace UUID> \
-  --endpoint httpbin.org
+  --namespace-id <Namespace UUID>
 ```
 
 > `--management-url` を省略すると `--proxy-url` と同じ値が使われます。本構成では
 > **管理プレーンと data plane でホスト名が異なる**ため、明示する場合は両方指定して
 > ください。
 
-### ⚠️ secret reference を使うなら `--namespace-id` が必須
+> **⚠️ CLI 0.7.0 以降で `--endpoint` は廃止されました。**
+>
+> ```text
+> error: unknown option '--endpoint'
+> ```
+>
+> 対象エンドポイントは Namespace 側のリソース定義で決まるため、CLI から指定する
+> 必要がなくなりました。`--namespace-id` だけを指定してください。
 
-**`--endpoint` だけでは参照の権限が証明書に乗りません。**
+### ⚠️ secret reference を使うなら `--namespace-id` が必須
 
 ```bash
 passport whoami
@@ -202,28 +222,38 @@ allowedApiRefs
 **`allowedApiRefs  (none)` のままなら権限が乗っていません。** `--namespace-id` を
 付け忘れているか、管理者側の紐付けが未完了です。
 
+生の内容は `--json` で確認できます（CLI 0.7.0 以降）。
+
 ```bash
-openssl x509 -in ~/.passport/cert.pem -noout -text | grep -A1 '1.3.6.1.4.1.99999.1'
+passport whoami --json
 ```
 
 ```json
-{"allowedApiRefs":{"GET httpbin.org/anything/*":[
-  {"secretReference":"aaaaaaaa-...","vaultType":"aws","vaultKEK":"h9u3+hU3..."}]}}
+{"mode":"user","userId":"user_01EXAMPLE...","teamId":"org_01EXAMPLE...",
+ "email":"you@example.com","allowedApiRefs":{"GET httpbin.org/anything/*":[
+   {"secretReference":"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    "name":"httpbin-token","vaultType":"aws"}]},
+ "notBefore":"...","notAfter":"...","validity":"VALID"}
 ```
 
 `allowedApiRefs` が `{}` なら権限なし、リソースはあるが配列が `[]` なら secret
-reference が未紐付けです。
+reference が未紐付けです。**`validity` が `EXPIRED` なら** `passport refresh` で
+再発行してください（TTL は最大 300 秒）。
 
 ### 主なオプション
 
 | オプション | 用途 |
 | --- | --- |
-| `--endpoint <hostname>` | 証明書を使う対象ホスト（例: `api.stripe.com`） |
-| `--ttl <seconds>` | 証明書の有効期間。デフォルト 3600 秒（**実測は 300 秒**） |
 | **`--namespace-id <id>`** | Namespace UUID。**secret reference を使うなら必須** |
+| `--ttl <seconds>` | 証明書の有効期間。**デフォルト 300 秒、指定できる範囲も 60〜300** |
 | `--proxy-server-name <host>` | SNI に使うホスト名。SAN 不一致の回避に使う |
+| `--management-url <url>` / `--proxy-url <url>` | 接続先の明示（省略時は自動解決） |
+| `--email` / `--user-id` / `--team-id` | ログイン中のプロファイルを上書きする |
 | `--no-daemon` | デーモンを起動せず `HTTPS_PROXY` も設定しない（CI / headless 向け） |
 | `--verbose` | エンドポイント解決の優先順位を全表示（`PASSPORT_DEBUG=1` でも有効） |
+
+> 証明書の TTL は**最大 300 秒**です。切れたら `passport refresh` で再発行できます
+> （デーモンには触りません）。`passport request` は自動更新するので通常は不要です。
 
 ### 終了コードの意味
 
@@ -276,11 +306,11 @@ Secrets Manager のキー名ではありません。
 | Namespace の **vault key** 欄（管理者が設定） | `passport/demo/httpbin-token`（Secrets Manager のキー名） |
 | **`{{vault:...}}`**（開発者が書く） | `aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee`（Passport 発行の UUID） |
 
-UUID は証明書から確認できます。
+UUID は `whoami` で確認できます。
 
 ```bash
-openssl x509 -in ~/.passport/cert.pem -noout -text | grep -A1 '1.3.6.1.4.1.99999.1'
-# → "secretReference":"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+passport whoami --json | python3 -m json.tool
+# → "secretReference": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 ```
 
 秘密はヘッダーに入れるのが実用的です。
@@ -353,6 +383,18 @@ passport daemon install
 >
 > **⚠️ `daemon install` 直後、既に開いているターミナルでは `HTTPS_PROXY` が効きません。**
 > 新しいターミナルを開いてください。
+
+### 証明書の再発行
+
+証明書の TTL は最大 300 秒です。期限切れは `whoami` の `validity` で分かります。
+
+```bash
+passport refresh          # 証明書を再発行（デーモンには触らない）
+passport refresh --ttl 300
+```
+
+> `passport request` は自動で更新するため、通常このコマンドは不要です。
+> `whoami` が `EXPIRED` のときや、管理者が Namespace のリソースを変更した直後に使います。
 
 ### ログの確認
 

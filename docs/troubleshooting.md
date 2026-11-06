@@ -284,6 +284,8 @@ helm upgrade passport oci://ociregistry.usepassport.ai/passport/passport \
 | ★ **502 `decrypt-failed`** / `failed to decrypt vault reference` | Access Proxy に **CA 鍵**の公開鍵を登録した（正しくは reference 鍵） | Access Proxy を作り直し、**secret reference も作り直す**。公開鍵は変更不可 |
 | ★ **403 `unauthorized`** / `not authorized for vault refs` | `--namespace-id` 未指定、または Namespace で secret が未紐付け | `passport setup --namespace-id <UUID>`。`whoami` の `allowedApiRefs` で確認 |
 | ★ `{{vault:...}}` が解決されない | Secrets Manager のキー名を書いている | **Passport 発行の UUID** を書く。証明書の `secretReference` で確認 |
+| ★ `error: unknown option '--endpoint'` | **CLI 0.7.0 以降で `--endpoint` は廃止**。対象は Namespace のリソース定義で決まる | `--namespace-id` だけを指定する（[手順](04-developer-setup.md#セットアップを実行する)） |
+| ★ 証明書が `EXPIRED` になる | TTL は**最大 300 秒**（0.7.x で既定も 300） | `passport refresh` で再発行。`passport request` は自動更新する |
 | ★ `error: missing required argument 'url'` | `passport request` で URL をオプションの後ろに書いた | URL を第1引数に置く |
 | ★ `daemon install` 後も `HTTPS_PROXY` が効かない | 既存のターミナルには反映されない | 新しいターミナルを開く |
 | ★ MDM 設定が引数を上書きする | macOS managed plist が最優先 | IT 管理者にプロファイルの更新を依頼する |
