@@ -354,13 +354,12 @@ openssl x509 -in passport-ca.pem -noout -subject -dates
 
 ### 5-1. Passport に登録する
 
-[app.usepassport.ai](https://app.usepassport.ai) で登録します。メールアドレスを入力し、
-確認コードを確認してパスワードを設定します。
+[app.usepassport.ai](https://app.usepassport.ai) で登録します。メールアドレスを入力し、 確認コードを確認してパスワードを設定します。
 
 ### 5-2. Access Proxy を登録する
 
-**Team Settings**（右上のアカウントメニュー）→ **Access Proxies** →
-**Create Access Proxy** を選択し、以下を入力します。
+**Top Menu** > **Access Proxies** >
+**Create Access Proxy** ボタンをクリックして、以下を入力します。
 
 | 項目 | 入力する値 |
 | --- | --- |
@@ -369,14 +368,11 @@ openssl x509 -in passport-ca.pem -noout -subject -dates
 | **公開鍵** | `passport-reference-pubkey.pem` の中身（**reference 鍵**） |
 | **Vault プロバイダー** | `aws-secrets-manager` |
 
-> **独自ドメインを使う利点がここで効きます。** LB の DNS 名を直接登録していると、
-> LB を作り直すたびに Access Proxy の登録内容を直す必要があります（しかも公開鍵は
-> 変更不可なので作り直しになりがちです）。CNAME なら向き先を変えるだけで済みます。
-
 ### 5-3. API リソースを設定する
 
-Home ページで namespace を作成し、**Add Resources** を選択します。追加方法は3通り
-あります。
+Homeで namespace を作成し、**Add Resources** を選択します。
+
+追加方法は3通りあります。
 
 | 方法 | 内容 |
 | --- | --- |
@@ -433,8 +429,7 @@ passport setup \
   --management-url https://passport-mgmt.example.com \
   --proxy-url https://passport-proxy.example.com:8443 \
   --proxy-server-name passport-proxy.example.com \
-  --namespace-id <Namespace UUID> \
-  --endpoint httpbin.org
+  --namespace-id <Namespace UUID>
 ```
 
 > **⚠️ MDM プロファイルがコマンドライン引数より優先されます。**
@@ -457,35 +452,3 @@ passport setup \
 - [ ] Namespace とリソース、secret reference を作成した
 
 → [04. 開発者向けセットアップ](04-developer-setup.md) へ進む
-
----
-
-## 既存の internal NLB から移行する場合
-
-以前の構成（`scheme: internal` + port-forward）から移行する場合の手順です。
-
-> **⚠️ LB の scheme は immutable です。`helm upgrade` では切り替わりません。**
-> Service の delete + 再作成が必要で、**NLB の DNS 名が変わります**。
-
-```bash
-# 1. values.yaml を internet-facing に変更しておく（02 の Step 4-4）
-
-# 2. Service を削除する（NLB も削除される）
-kubectl -n passport delete svc passport-passport
-
-# 3. upgrade で作り直す
-helm upgrade passport oci://ociregistry.usepassport.ai/passport/passport \
-  --version 0.6.0 -f values.yaml -n passport
-
-# 4. 新しい DNS 名を取得して Route53 の CNAME を貼り替える（Step 1）
-kubectl -n passport get svc passport-passport \
-  -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'; echo
-
-# 5. SAN を確認する（Step 3-4）
-```
-
-**CNAME を使っていれば、開発者への案内と Access Proxy の登録内容は変更不要です。**
-向き先を貼り替えるだけで済みます。これが独自ドメインを挟む最大の利点です。
-
-NLB の再作成には数分かかります。その間 data plane は停止するため、開発者に事前に
-周知してください。
