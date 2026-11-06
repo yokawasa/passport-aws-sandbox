@@ -306,23 +306,9 @@ reference 秘密鍵で復号します。したがって登録するのは **refe
 openssl rsa -in .keys/reference-private-key -pubout -out passport-reference-pubkey.pem
 ```
 
-> **⚠️ CA 鍵の公開鍵を登録すると、認可は通るのに復号で失敗します**
->
-> ```text
-> HTTP/1.1 502 Bad Gateway
-> x-passport-proxy-error: decrypt-failed
-> passport: failed to decrypt vault reference: <uuid>
-> ```
->
-> 403 ではなく **502 `decrypt-failed`** が出たら、この取り違えを疑ってください。
->
-> **さらに厄介なのは、間違えると復旧が重いことです。**
-> Access Proxy の公開鍵は登録後に変更できません（UI が Read-only）。作り直しが必要で、
-> しかも **Access Proxy を作り直しただけでは既存の secret reference の `vaultKEK` は
-> 再暗号化されません**。secret reference も作り直す必要があり、UI で個別削除できない
-> 場合は Namespace ごと作り直すことになります。
->
-> **最初に正しい鍵を登録してください。**
+> **⚠️ 取り違えると復旧が重いので、最初に正しい鍵を登録してください。**
+> 公開鍵は登録後に変更できず、Access Proxy と secret reference の作り直しになります。
+> 症状と対処は [トラブルシューティング](troubleshooting.md#接続時)を参照してください。
 
 ### 4-2. 鍵の取り違えを検出する
 
