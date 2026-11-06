@@ -113,7 +113,7 @@ passport login
 passport auth status
 ```
 
-## Step 4. セットアップする
+## Step 4. セットアップする (Optional)
 
 **多くの場合このステップは不要です。** `passport login` が setup まで自動実行し、
 その時点で secret reference の権限も証明書に乗るためです。まず Step 3 のあとに

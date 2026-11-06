@@ -413,16 +413,35 @@ Namespaces のセットアップが完了したら、チームを招待します
 
 ## Step 6. 開発者に案内する
 
-開発者に以下を伝えます。**ポートフォワードの手順は不要になりました。**
+**伝えるのは実質2つだけです。** ポートフォワードの手順も、接続先 URL も要りません。
+
+| 項目 | 値 |
+| --- | --- |
+| 手順書 | [04-developer-setup.md](04-developer-setup.md) |
+| Namespace ID | `<Namespace UUID>`（権限が乗らなかったときに使う） |
+
+開発者側は基本これだけで完了します。
+
+```bash
+passport login          # setup まで自動実行される
+passport whoami         # allowedApiRefs にリソースが出れば完了
+```
+
+> **URL を伝える必要はありません。** `passport login` 後に passport-service discovery が
+> `managementUrl` / `proxyUrl` を自動解決し、`~/.passport/identity.json` に記録します。
+> 開発者が URL を入力する場面はありません。
+
+### 自動解決されない場合の参考値
+
+開発者が接続できないときの切り分け用です。`passport setup --verbose` の出力と
+見比べてください。
 
 | 項目 | 値 |
 | --- | --- |
 | Management URL | `https://passport-mgmt.example.com` |
 | Proxy URL | `https://passport-proxy.example.com:8443` |
-| Namespace ID | `<Namespace UUID>` |
-| 手順書 | [04-developer-setup.md](04-developer-setup.md) |
 
-開発者に渡す `passport setup` の例:
+明示する場合のコマンド:
 
 ```bash
 passport setup \
@@ -434,8 +453,8 @@ passport setup \
 
 > **⚠️ MDM プロファイルがコマンドライン引数より優先されます。**
 > 社内 Mac が MDM 管理下にある場合、配布している MDM プロファイルの
-> `ManagementURL` / `ProxyURL` も新しいホスト名に更新しないと、引数で指定しても
-> 古い接続先が使われ続けます。詳細は
+> `ManagementURL` / `ProxyURL` も新しいホスト名に更新しないと、**引数で指定しても
+> 古い接続先が使われ続けます**。上の表の値と突き合わせて確認してください。詳細は
 > [04-developer-setup.md](04-developer-setup.md#エンドポイント解決の優先順位)を
 > 参照してください。
 
