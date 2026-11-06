@@ -1,142 +1,106 @@
-# Passport on AWS — セットアップ手順書
+# Passport on AWS — Setup Guide
 
-[Postman Passport](https://usepassport.ai) を AWS (EKS) 上にゼロから構築し、開発者が
-secret reference を使って API を叩けるようになるまでの手順書です。
+Build [Postman Passport](https://usepassport.ai) on AWS (EKS) from nothing, through to a
+developer resolving secret references.
 
-このリポジトリで実際に検証した構成をもとにしています。**ポートフォワードを使わず、
-Proxy と管理プレーンの両方に独自ドメインで外部からアクセスする構成**です。
+Based on a configuration validated end to end in this repository. **The proxy and the
+management plane are both reached over their own domain names — no `kubectl port-forward`.**
 
-## 全体の流れ
-
-```
-┌─ 01-infrastructure.md ──────────────────────────────┐
-│  Terraform: VPC / EKS / IRSA / Secrets Manager       │   管理者
-│  AWS CLI  : ACM 証明書の発行（DNS 検証）             │   40〜60分
-└──────────────────────┬──────────────────────────────┘
-                       │  EKS クラスタ・IRSA ロール ARN・証明書 ARN
-                       ▼
-┌─ 02-passport-proxy.md ──────────────────────────────┐
-│  Helm: Passport Proxy をデプロイ                     │   管理者
-│  鍵の生成、values.yaml の設定、NLB + ALB の作成      │   30〜45分
-└──────────────────────┬──────────────────────────────┘
-                       │  NLB / ALB の DNS 名
-                       ▼
-┌─ 03-dns-and-exposure.md ────────────────────────────┐
-│  Route53: CNAME を切る → SAN を確定 → helm upgrade   │   管理者
-│  疎通確認、Passport Cloud の Namespaces 設定         │   30〜40分
-└──────────────────────┬──────────────────────────────┘
-                       │  Proxy URL / Management Host / 公開鍵
-                       ▼
-┌─ 04-developer-setup.md ─────────────────────────────┐
-│  Passport CLI のインストールと設定、通信確認         │   開発者
-│                                                      │   10〜15分
-└──────────────────────────────────────────────────────┘
-```
-
-**01〜03 は管理者が1回だけ実施します。04 は開発者が各自の PC で実施します。**
-01〜03 が終わっていないと開発者の `passport setup` は完了しません。
-
-## ドキュメント一覧
-
-| # | ドキュメント | 対象 | 内容 |
-| --- | --- | --- | --- |
-| 01 | [インフラ構築](01-infrastructure.md) | 管理者 | Terraform で VPC / EKS / IRSA / Secrets Manager を作る。ACM 証明書を発行する |
-| 02 | [Passport Proxy のデプロイ](02-passport-proxy.md) | 管理者 | 鍵を生成し、Helm で Proxy をデプロイする |
-| 03 | [DNS と外部公開](03-dns-and-exposure.md) | 管理者 | Route53 にレコードを切り、ホスト名を確定して疎通確認する。Namespaces を設定する |
-| 04 | [開発者向けセットアップ](04-developer-setup.md) | 開発者 | CLI をインストールし、secret reference 経由で API を叩く |
-| — | [トラブルシューティング](troubleshooting.md) | 全員 | 実機で遭遇した落とし穴の一覧 |
-
-## この構成の設計方針
-
-### なぜ外部公開するのか
-
-検証のたびに `kubectl port-forward` を張るのは、チームに展開する構成として現実的では
-ありません。そこで **data plane (:8443) と管理プレーン (:8081) を、性質に応じて
-非対称に公開**します。
-
-| プレーン | ポート | 公開方法 | 根拠 |
-| --- | --- | --- | --- |
-| **data plane** | 8443 | NLB (`internet-facing`) | **mTLS 必須**。Passport CA が署名したクライアント証明書がないと TLS ハンドシェイクで切られる。インターネットに晒された mTLS ゲートウェイは Passport の設計前提 |
-| **管理プレーン** | 8081 | ALB + **パス allowlist** (`/ca.pem`, `/issue-cert` のみ) | 平文 HTTP で、`/metrics` や管理 API と同居している。ALB で TLS 終端し、必要な2パスだけ通す |
-
-> **⚠️ 管理プレーンを LoadBalancer で公開してはいけません。**
+> ## 🚧 The English guide is not written yet
 >
-> :8081 には公開したい `/ca.pem` `/issue-cert` と、公開したくない `/metrics`
-> `/revocation` 管理 API・Console UI が**同じポートに同居**しています。
-> LoadBalancer にすると全部まとめて出てしまい、しかも平文 HTTP です。
-> 必ず Ingress のパス allowlist を使ってください。
-
-### data plane に ACM 証明書を使わない理由
-
-NLB は L4 パススルーで、**クライアント証明書を終端させずに Pod まで届ける必要がある**
-ためです。TLS は Proxy 自身が終端します。ACM 証明書が必要なのは管理プレーン側の
-ALB だけです。
-
-## この手順書で作るホスト名
-
-**本手順書のコマンド・設定例はすべてダミー値で書かれています。**
-自分の環境の値に読み替えてください。
-
-ドメインは `example.com`（Route53 のパブリックホストゾーン）を例とし、ホスト名は
-用途が分かるよう **`passport-proxy`**（data plane）と **`passport-mgmt`**（管理プレーン）
-で統一しています。
-
-| 役割 | ホスト名（例） | 向き先 | 用途 |
-| --- | --- | --- | --- |
-| **Proxy URL** | `passport-proxy.example.com` | NLB (:8443) | data plane。CLI が mTLS で接続する |
-| **Management URL** | `passport-mgmt.example.com` | ALB (:443) | 管理プレーン。`/ca.pem` と `/issue-cert` のみ |
-
-### 読み替えが必要なダミー値の一覧
-
-| 本書の表記 | 意味 | 自分の値の確認方法 |
-| --- | --- | --- |
-| `example.com` | 所有するドメイン | Route53 のパブリックホストゾーン |
-| `passport-proxy` / `passport-mgmt` | ホスト名（サブドメイン） | 任意。チーム名などを足して衝突を避ける（下記） |
-| `Z0123456789ABCDEFGHIJ` | ホストゾーン ID | `aws route53 list-hosted-zones` |
-| `my-aws-profile` | AWS CLI のプロファイル名 | `aws configure list-profiles` |
-| `123456789012` | AWS アカウント ID | `aws sts get-caller-identity` |
-| `org_01EXAMPLE000000000000000` | Postman Team ID | Team Settings → Team Info（`org_` で始まる値） |
-| `00000000-1111-2222-3333-444444444444` | Namespace UUID | Passport Cloud の Namespace URL |
-| `aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee` | secret reference UUID | Namespace で secret を紐付けた際に発行される |
-| `ap-northeast-1` | リージョン | 任意のリージョンに読み替え可 |
-
-> **ホスト名の衝突に注意**
+> Only this index exists in English so far. **The complete guide is available in Japanese:**
 >
-> 共用のゾーンでは `passport-proxy` / `passport-mgmt` が既に使われていることが
-> あります。その場合はチームや地域の識別子を足して衝突を避けてください
-> （例: `jp-passport-proxy`、`passport-proxy-team-a`）。
-> **ゾーン内の既存の命名慣習（接頭辞か接尾辞か）に合わせる**と、運用上わかりやすく
-> なります。
+> → **[docs/ja/README.md](ja/README.md)**
+>
+> The pages listed below link to the Japanese versions until their translations land.
+> Commands, YAML and output samples in those pages are language-independent, so they are
+> usable as-is.
 
-## 前提知識とツール
+## Documents
 
-Docker / Kubernetes / Helm / YAML / プライベートレジストリを一通り扱えることを前提と
-しています。
+| # | Document | Audience | Contents |
+| --- | --- | --- | --- |
+| 01 | [Infrastructure](ja/01-infrastructure.md) 🇯🇵 | Admin | Build VPC / EKS / IRSA / Secrets Manager with Terraform; issue the ACM certificate |
+| 02 | [Deploying the Passport Proxy](ja/02-passport-proxy.md) 🇯🇵 | Admin | Generate keys, configure `values.yaml`, deploy with Helm |
+| 03 | [DNS and public exposure](ja/03-dns-and-exposure.md) 🇯🇵 | Admin | Add Route53 records, fix the hostnames, verify connectivity, configure Namespaces |
+| 04 | [Developer setup](ja/04-developer-setup.md) 🇯🇵 | Developer | Install the CLI and use secret references |
+| — | [Troubleshooting](ja/troubleshooting.md) 🇯🇵 | Everyone | Problems actually hit while building this |
 
-必要なツール:
+**01–03 are done once by an administrator. 04 is done by each developer on their own
+machine.** A developer's `passport login` will not complete until 01–03 are finished.
 
-| ツール | 用途 | バージョン |
+## How this is exposed
+
+Validating by hand with `kubectl port-forward` every time does not scale to a team, so the
+two planes are **exposed asymmetrically, according to what each one is**.
+
+| Plane | Port | How it is exposed | Why |
+| --- | --- | --- | --- |
+| **Data plane** | 8443 | NLB (`internet-facing`) | **mTLS is mandatory** — without a client certificate signed by the Passport CA the TLS handshake is dropped. An internet-facing mTLS gateway is what Passport is designed around |
+| **Management plane** | 8081 | ALB with a **path allowlist** (`/ca.pem`, `/issue-cert` only) | Plain HTTP, sharing a port with `/metrics` and the admin API. The ALB terminates TLS and forwards only those two paths |
+
+> **⚠️ Never expose the management plane with a LoadBalancer.**
+>
+> Port 8081 serves `/ca.pem` and `/issue-cert` (which you want public) alongside
+> `/metrics`, the `/revocation` admin API and the console UI (which you do not) — all on
+> **the same port**, over plain HTTP. Use the Ingress path allowlist instead.
+
+### Why the data plane needs no ACM certificate
+
+The NLB passes L4 through so the **client certificate reaches the pod unterminated**; the
+proxy itself terminates TLS. Only the management plane's ALB needs an ACM certificate.
+
+## Placeholder values
+
+**Every command and config sample uses dummy values.** Substitute your own.
+
+The domain is `example.com` (a Route53 public hosted zone), and the hostnames state their
+role: **`passport-proxy`** (data plane) and **`passport-mgmt`** (management plane).
+
+| Role | Hostname (example) | Points at | Purpose |
+| --- | --- | --- | --- |
+| **Proxy URL** | `passport-proxy.example.com` | NLB (:8443) | Data plane; the CLI connects here over mTLS |
+| **Management URL** | `passport-mgmt.example.com` | ALB (:443) | Management plane; `/ca.pem` and `/issue-cert` only |
+
+### What to substitute
+
+| In this guide | Meaning | How to find yours |
 | --- | --- | --- |
-| Terraform | インフラ構築 | >= 1.5.7（1.10 以上推奨） |
+| `example.com` | A domain you own | A Route53 public hosted zone |
+| `passport-proxy` / `passport-mgmt` | Hostnames (subdomains) | Your choice; prefix with a team name to avoid collisions (below) |
+| `Z0123456789ABCDEFGHIJ` | Hosted zone ID | `aws route53 list-hosted-zones` |
+| `my-aws-profile` | AWS CLI profile name | `aws configure list-profiles` |
+| `123456789012` | AWS account ID | `aws sts get-caller-identity` |
+| `org_01EXAMPLE000000000000000` | Postman team ID | Team Settings → Team Info (starts with `org_`) |
+| `00000000-1111-2222-3333-444444444444` | Namespace UUID | The namespace URL in Passport Cloud |
+| `aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee` | Secret reference UUID | Issued when you attach a secret in a namespace |
+| `ap-northeast-1` | Region | Any region works |
+
+> **Watch for hostname collisions.** On a shared zone `passport-proxy` / `passport-mgmt`
+> may already be taken. Add a team or region identifier (`jp-passport-proxy`,
+> `passport-proxy-team-a`) and **follow whatever naming convention the zone already uses**
+> — prefix or suffix.
+
+## Assumed knowledge and tooling
+
+Assumes working familiarity with Docker, Kubernetes, Helm, YAML and private registries.
+
+| Tool | Purpose | Version |
+| --- | --- | --- |
+| Terraform | Building infrastructure | >= 1.5.7 (1.10+ recommended) |
 | AWS CLI v2 | ACM / Route53 / EKS | — |
-| kubectl | Kubernetes 操作 | — |
-| Helm | Proxy のデプロイ | 4.x で検証 |
-| Docker | イメージの取得 | — |
-| openssl | 鍵の生成と検証 | — |
+| kubectl | Operating Kubernetes | — |
+| Helm | Deploying the proxy | Verified with 4.x |
+| Docker | Pulling the image | — |
+| openssl | Generating and inspecting keys | — |
 
-## 検証済み環境
+## Verified environment
 
-本手順書は以下の環境でエンドツーエンドに検証しています。
+This guide was validated end to end against:
 
-| 項目 | 値 |
+| Item | Value |
 | --- | --- |
-| EKS クラスタ | Amazon EKS 1.33 / ap-northeast-1（クラスタ名は `<project>-<environment>`。既定では `passport-sandbox-dev`） |
-| Helm チャート | `passport-0.6.0` |
-| イメージ | `passport-proxy:v0.6.0` |
+| EKS cluster | Amazon EKS 1.33 / ap-northeast-1 (named `<project>-<environment>`, `passport-sandbox-dev` by default) |
+| Helm chart | `passport-0.6.0` |
+| Image | `passport-proxy:v0.6.0` |
 | CLI | `0.7.2` / macOS arm64 |
-
-> **ポートフォワード構成からの移行について**
->
-> 以前の構成（`scheme: internal` + port-forward）から移行する場合、**LB の scheme は
-> immutable なので `helm upgrade` では切り替わりません**。Service の delete + 再作成が
-> 必要です（DNS 名も変わるため、Route53 の CNAME も貼り替えてください）。
