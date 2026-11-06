@@ -241,9 +241,6 @@ kubectl -n passport describe pod -l app.kubernetes.io/instance=passport | grep -
 export PROXY_FQDN=passport-proxy.example.com
 
 openssl s_client -connect "$PROXY_FQDN:8443" -servername "$PROXY_FQDN" </dev/null 2>/dev/null \
-  | openssl x509 -noout -subject -dates
-
-openssl s_client -connect "$PROXY_FQDN:8443" -servername "$PROXY_FQDN" </dev/null 2>/dev/null \
   | openssl x509 -noout -text | grep -A2 "Subject Alternative Name"
 ```
 
@@ -255,19 +252,6 @@ notAfter=Jan  1 00:00:00 2030 GMT
                 IP Address:127.0.0.1, DNS:passport-proxy.example.com,
                 DNS:localhost, DNS:passport-proxy
 ```
-
-> **なぜ `-text | grep` なのか**
->
-> `openssl x509 -ext subjectAltName` のほうが簡潔ですが、**macOS 標準の openssl は
-> LibreSSL で `-ext` がありません**（`unknown option -ext` になります）。
->
-> ```bash
-> openssl version   # → LibreSSL 3.3.6 など
-> ```
->
-> `-text | grep` は LibreSSL でも OpenSSL でも動きます。OpenSSL 1.1.1 以降を
-> 使っているなら `-ext subjectAltName` でも構いません
-> （Homebrew なら `brew install openssl` 後に `$(brew --prefix openssl)/bin/openssl`）。
 
 **`DNS:passport-proxy.example.com` が含まれていることを確認してください。**
 
@@ -296,6 +280,17 @@ kubectl -n passport get deploy passport-passport -o jsonpath=\
 ## Step 4. Access Proxy 登録用の公開鍵を用意する
 
 次の Step 5-2 で使う値を準備します。**ここが全体でもっとも間違えやすい箇所です。**
+
+> **用語: 「Access Proxy」と「Passport Proxy」は別のものを指します。**
+>
+> | 用語 | 実体 | どこにあるか |
+> | --- | --- | --- |
+> | **Passport Proxy** | 02 でデプロイした Pod 本体（`passport-passport`） | 自分の EKS クラスタ |
+> | **Access Proxy** | その Proxy を Passport Cloud に**登録したエントリ** | Passport Cloud の UI |
+>
+> Passport Cloud の画面では **Team Settings → Access Proxies** という名前なので、
+> 本書も UI の表記に合わせています。Step 4〜5-2 で扱うのは「Cloud 側の登録情報」
+> であって、Pod の設定ではありません。
 
 ### 4-1. 登録するのは reference 鍵の公開鍵
 
