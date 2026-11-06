@@ -228,6 +228,7 @@ aws sso login --profile my-aws-profile
 | ★ `revocation disabled` の WARN | `revocation.enabled: false` | 機能を使わないなら**正常**。無視してよい |
 | ★ `console auth disabled` の WARN | `console.enabled: false` | 同上。Console を使う場合のみ `user` と `passwordHash` を設定 |
 | ★ **`startup failed: config: PASSPORT_PROXY_REQUIRE_BUNDLE_CLAIMS requires both PASSPORT_PROXY_BUNDLE_AUDIENCE and PASSPORT_PROXY_BUNDLE_ISSUER to be set`** → CrashLoopBackOff | `bundle.requireBundleClaims: true` にしたが `audience` / `issuer` が未設定 | 3点セットで設定するか、`requireBundleClaims: false` に戻す（[下記](#requirebundleclaims-で-pod-が起動しない)） |
+| ★ `openssl x509: unknown option -ext` | **macOS 標準の openssl は LibreSSL** で `-ext` が無い | `-text \| grep -A2 "Subject Alternative Name"` を使う（[手順](03-dns-and-exposure.md#3-4-data-plane-の-tls-と-san-を確認する)）。`openssl version` で確認 |
 | ★ `exec: "wget"/"sh"/"curl": executable file not found in $PATH` | **イメージが distroless**。シェルもコマンドも入っていないので `kubectl exec` で中を調べられない | `/readyz` は Pod の `READY 1/1` で判断する。中身を見るなら `kubectl run curl-tmp --rm -it --image=curlimages/curl -- curl -s http://passport-passport-mgmt:8081/readyz`（[手順](03-dns-and-exposure.md#3-3-ヘルスチェックを確認する)） |
 | ★ `http: TLS handshake error from 10.x.x.x: EOF` がログに流れ続ける | NLB のヘルスチェックがクライアント証明書なしで :8443 を叩いている | **mTLS 必須なので正常**。Pod が `1/1 Running` なら無視してよい。[減らす方法](02-passport-proxy.md#tls-handshake-error-は正常) |
 | ★ 起動ログが見つからない（`--tail` がヘルスチェックで埋まる） | 起動ログは先頭の数行だが、`TLS handshake error` が数秒おきに追記され数千行になる | `--tail` を使わず `logs "$POD" \| grep -v "TLS handshake error" \| head` で先頭から読む（[手順](02-passport-proxy.md#5-4-起動ログを確認する)） |

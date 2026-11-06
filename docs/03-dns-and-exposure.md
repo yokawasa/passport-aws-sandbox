@@ -241,20 +241,44 @@ kubectl -n passport describe pod -l app.kubernetes.io/instance=passport | grep -
 export PROXY_FQDN=passport-proxy.example.com
 
 openssl s_client -connect "$PROXY_FQDN:8443" -servername "$PROXY_FQDN" </dev/null 2>/dev/null \
-  | openssl x509 -noout -subject -dates -ext subjectAltName
+  | openssl x509 -noout -subject -dates
+
+openssl s_client -connect "$PROXY_FQDN:8443" -servername "$PROXY_FQDN" </dev/null 2>/dev/null \
+  | openssl x509 -noout -text | grep -A2 "Subject Alternative Name"
 ```
 
 ```text
-subject=CN=passport-proxy, O=Passport, OU=passport
-notBefore=...
-notAfter=...
-X509v3 Subject Alternative Name:
-    IP Address:127.0.0.1, DNS:passport-proxy.example.com,
-    DNS:localhost, DNS:passport-proxy
+subject= /CN=passport-proxy/O=Passport/OU=passport
+notBefore=Jan  1 00:00:00 2025 GMT
+notAfter=Jan  1 00:00:00 2030 GMT
+            X509v3 Subject Alternative Name:
+                IP Address:127.0.0.1, DNS:passport-proxy.example.com,
+                DNS:localhost, DNS:passport-proxy
 ```
 
+> **なぜ `-text | grep` なのか**
+>
+> `openssl x509 -ext subjectAltName` のほうが簡潔ですが、**macOS 標準の openssl は
+> LibreSSL で `-ext` がありません**（`unknown option -ext` になります）。
+>
+> ```bash
+> openssl version   # → LibreSSL 3.3.6 など
+> ```
+>
+> `-text | grep` は LibreSSL でも OpenSSL でも動きます。OpenSSL 1.1.1 以降を
+> 使っているなら `-ext subjectAltName` でも構いません
+> （Homebrew なら `brew install openssl` 後に `$(brew --prefix openssl)/bin/openssl`）。
+
 **`DNS:passport-proxy.example.com` が含まれていることを確認してください。**
-含まれていなければ Step 2 の `dataplaneCertSANs` が反映されていません。
+
+SAN に **LB の DNS 名（`k8s-passport-passport-....elb.amazonaws.com`）しか入っていない**
+場合、Step 2 の `dataplaneCertSANs` がまだ反映されていません。`helm upgrade` と
+Pod の再起動を実施してください。実際に注入されている値はこう確認できます。
+
+```bash
+kubectl -n passport get deploy passport-passport -o jsonpath=\
+'{.spec.template.spec.containers[0].env[?(@.name=="PASSPORT_PROXY_DATAPLANE_CERT_SANS")].value}'; echo
+```
 
 > **SAN は自動で補完されます**
 > `dataplaneCertSANs` に指定した値に加えて、`localhost` / `127.0.0.1` /
