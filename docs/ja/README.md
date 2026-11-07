@@ -74,6 +74,21 @@ NLB は L4 パススルーで、**クライアント証明書を終端させず�
 ためです。TLS は Proxy 自身が終端します。ACM 証明書が必要なのは管理プレーン側の
 ALB だけです。
 
+## 用語: 「管理プレーン」とは
+
+本書で**「管理プレーン」と書いたら Passport Proxy の `:8081`** を指します。`/ca.pem`、
+`/issue-cert`、`/metrics`、Console UI を提供するポートのことです。**Passport Cloud
+(`app.usepassport.ai`) ではありません**（こちらは SaaS なので構築対象外）。
+
+| 用語 | 実体 | ここで構築するか |
+| --- | --- | --- |
+| **データプレーン** | Proxy の `:8443`。mTLS CONNECT と参照解決 | する（NLB で公開） |
+| **管理プレーン** | Proxy の `:8081`。`/ca.pem` と `/issue-cert` | する（ALB で公開） |
+| Passport Cloud | `app.usepassport.ai`。Namespace 管理、RFA 承認、bundle 発行 | しない（SaaS） |
+
+チャートの `values.yaml` 自身も同じ呼び方をしており、`mgmt` を
+"management/health/metrics plane" と説明しています。
+
 ## この手順書で作るホスト名
 
 **本手順書のコマンド・設定例はすべてダミー値で書かれています。**

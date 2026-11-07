@@ -70,6 +70,21 @@ two planes are **exposed asymmetrically, according to what each one is**.
 The NLB passes L4 through so the **client certificate reaches the pod unterminated**; the
 proxy itself terminates TLS. Only the management plane's ALB needs an ACM certificate.
 
+## Terminology: "management plane"
+
+In this guide **"management plane" always means the Passport Proxy's `:8081`** — the port
+serving `/ca.pem`, `/issue-cert`, `/metrics` and the console UI. It is **not** Passport
+Cloud (`app.usepassport.ai`), which this repository does not build.
+
+| Term | What it is | Built here? |
+| --- | --- | --- |
+| **Data plane** | The proxy's `:8443` — mTLS CONNECT, resolves references | Yes, fronted by an NLB |
+| **Management plane** | The proxy's `:8081` — `/ca.pem`, `/issue-cert` | Yes, fronted by an ALB |
+| Passport Cloud | `app.usepassport.ai` — namespaces, RFA approval, bundle issuance | No (SaaS) |
+
+The chart's own `values.yaml` uses the same wording: `mgmt` is described there as the
+"management/health/metrics plane".
+
 ## Placeholder values
 
 **Every command and config sample uses dummy values.** Substitute your own.

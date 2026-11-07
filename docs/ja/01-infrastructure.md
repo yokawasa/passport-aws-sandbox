@@ -5,8 +5,8 @@
 > **前のステップ**: なし（ここから開始）
 > **次のステップ**: [02. Passport Proxy のデプロイ](02-passport-proxy.md)
 
-Terraform で VPC / EKS / IRSA / Secrets Manager を作り、管理プレーン用の ACM 証明書を
-発行します。
+Terraform で VPC / EKS / IRSA / Secrets Manager を作り、Passport Proxy の管理プレーン
+(:8081) 用の ACM 証明書を発行します。
 
 ## このステップで作るもの
 
@@ -105,10 +105,10 @@ terraform -chdir=terraform output -raw passport_proxy_irsa_role_arn
 
 ---
 
-## Step 6. 管理プレーン用の ACM 証明書を発行する
+## Step 6. 管理プレーン (:8081) 用の ACM 証明書を発行する
 
-管理プレーンは ALB で TLS 終端するため、ACM 証明書が必要です。**ALB と同じリージョン
-(ap-northeast-1) に発行**します。
+Passport Proxy の管理プレーン (:8081) は ALB で TLS 終端するため、ACM 証明書が必要です。
+**ALB と同じリージョン (ap-northeast-1) に発行**します。
 
 > **data plane (NLB) には証明書は不要です。** L4 パススルーでクライアント証明書を
 > 終端させずに Pod まで届ける必要があり、TLS は Proxy 自身が終端するためです。

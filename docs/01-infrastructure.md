@@ -6,7 +6,7 @@
 > **Next step**: [02. Deploying the Passport Proxy](02-passport-proxy.md)
 
 Build the VPC / EKS / IRSA / Secrets Manager with Terraform, and issue the ACM certificate
-for the management plane.
+for the Passport Proxy's management plane (:8081).
 
 ## What this step creates
 
@@ -106,10 +106,10 @@ terraform -chdir=terraform output -raw passport_proxy_irsa_role_arn
 
 ---
 
-## Step 6. Issue the ACM certificate for the management plane
+## Step 6. Issue the ACM certificate for the management plane (:8081)
 
-The management plane terminates TLS at the ALB, so it needs an ACM certificate. **Issue it
-in the same region as the ALB (ap-northeast-1)**.
+The Passport Proxy's management plane (:8081) terminates TLS at the ALB, so it needs an
+ACM certificate. **Issue it in the same region as the ALB (ap-northeast-1)**.
 
 > **The data plane (NLB) does not need a certificate.** The client certificate has to reach
 > the Pod without being terminated, via L4 passthrough, because the Proxy itself terminates
