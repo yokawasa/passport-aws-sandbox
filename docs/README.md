@@ -114,6 +114,119 @@ Assumes working familiarity with Docker, Kubernetes, Helm, YAML and private regi
 | Docker | Pulling the image | — |
 | openssl | Generating and inspecting keys | — |
 
+You also need permission to create VPC / EKS / IAM / ELB resources in the target account.
+
+## Setup
+
+### 1. Create the S3 bucket for tfstate
+
+```bash
+make bootstrap TFSTATE_BUCKET=my-tfstate-bucket-1234 REGION=ap-northeast-1
+```
+
+### 2. Prepare variables, then init / apply
+
+```bash
+cp terraform/terraform.tfvars.example terraform/terraform.tfvars
+# Edit as needed. Restrict endpoint_public_access_cidrs to the IP you run kubectl
+# from — it defaults to 0.0.0.0/0.
+
+make tf-init TFSTATE_BUCKET=my-tfstate-bucket-1234
+make tf-plan
+make tf-apply
+```
+
+Creating the VPC, EKS cluster, node group and ALB Controller takes roughly 15–20 minutes.
+
+### 3. Update kubeconfig
+
+```bash
+make kubeconfig
+kubectl get nodes
+```
+
+### 4. Deploy the Passport Proxy
+
+Everything from here is Passport configuration, covered in [`docs/`](.).
+
+| Document | Contents |
+| --- | --- |
+| [01 Infrastructure](01-infrastructure.md)  | Steps 1–3 above in detail, plus issuing the ACM certificate for the management plane |
+| [02 Deploying the proxy](02-passport-proxy.md) | Generating keys, configuring `values.yaml`, deploying with Helm |
+| [03 DNS and exposure](03-dns-and-exposure.md) | Route53 records, connectivity checks, configuring Namespaces |
+| [04 Developer setup](04-developer-setup.md) | Developer CLI setup and using secret references |
+
+> 🇯🇵 [日本語セットアップガイド](ja/README.md)
+>  
+> Commands, YAML and output samples are language-independent and usable as-is.
+
+The target API is deliberately absent from this repository. Register an external endpoint
+such as `httpbin.org` as a namespace resource and validate against that.
+
+## Teardown
+
+**Delete the load balancers before running `terraform destroy`.**
+
+```bash
+# 1. If the Passport Proxy is installed, uninstall it (this removes the NLB and ALB)
+helm uninstall passport -n passport
+
+# 2. Confirm no load balancers or security groups remain in the VPC (exits 1 if any do)
+make destroy-check
+
+# 3. Destroy
+make tf-destroy
+```
+
+> **⚠️ The ALB / NLB are outside Terraform's management.**
+>
+> The AWS Load Balancer Controller creates them from `Ingress` and `type: LoadBalancer`
+> Services, so `terraform destroy` never tries to delete them. Leave them in place and the
+> load balancer ENIs keep holding the private subnets, failing with:
+>
+> ```text
+> Error: deleting EC2 Subnet (subnet-xxxx): ... api error DependencyViolation:
+>   The subnet 'subnet-xxxx' has dependencies and cannot be deleted.
+> ```
+>
+> **Forgetting `helm uninstall passport` is the common case.** Both the NLB and the ALB are
+> managed by that release.
+>
+> **Deleting a load balancer leaves its security group (`k8s-...`) behind**, and the VPC
+> deletion then fails the same way. `make destroy-check` looks for both.
+>
+> **Deletion is asynchronous.** After `helm uninstall` returns, the controller needs
+> **1–3 minutes** to remove the load balancers and release the ENIs. Wait until
+> `make destroy-check` reports none before destroying.
+
+### When destroy fails with DependencyViolation
+
+If the EKS cluster is already gone, so is the controller, and deleting the Service can no
+longer clean up for you. Remove the resources through the AWS API instead.
+
+```bash
+VPC_ID=<the VPC ID from the error>
+
+# 1. Find the remaining load balancers
+aws elbv2 describe-load-balancers --region ap-northeast-1 \
+  --query "LoadBalancers[?VpcId=='$VPC_ID'].{Name:LoadBalancerName,ARN:LoadBalancerArn}" --output table
+
+# 2. Delete and wait for them to disappear
+aws elbv2 delete-load-balancer --region ap-northeast-1 --load-balancer-arn <ARN>
+aws elbv2 wait load-balancers-deleted --region ap-northeast-1 --load-balancer-arns <ARN>
+
+# 3. Confirm the ENIs were released (wait for 0 — this lags the delete API by minutes)
+aws ec2 describe-network-interfaces --region ap-northeast-1 \
+  --filters Name=vpc-id,Values=$VPC_ID \
+  --query 'length(NetworkInterfaces)' --output text
+
+# 4. Re-run destroy
+make tf-destroy
+```
+
+The load balancers' security groups (`k8s-...`) can also survive. If destroy then stops on
+a security group, delete it by hand once the ENIs are released.
+
 ## Verified environment
 
 This guide was validated end to end against:

@@ -127,6 +127,106 @@ Docker / Kubernetes / Helm / YAML / プライベートレジストリを一通�
 | Docker | イメージの取得 | — |
 | openssl | 鍵の生成と検証 | — |
 
+あわせて、対象アカウントに VPC / EKS / IAM / ELB を作成できる権限が必要です。
+
+## セットアップ
+
+### 1. tfstate 用 S3 バケットを作る
+
+```bash
+make bootstrap TFSTATE_BUCKET=my-tfstate-bucket-1234 REGION=ap-northeast-1
+```
+
+### 2. 変数を用意して init / apply
+
+```bash
+cp terraform/terraform.tfvars.example terraform/terraform.tfvars
+# 必要に応じて編集（endpoint_public_access_cidrs は kubectl の接続元 IP に絞るのを推奨。既定は 0.0.0.0/0）
+
+make tf-init TFSTATE_BUCKET=my-tfstate-bucket-1234
+make tf-plan
+make tf-apply
+```
+
+VPC・EKS・ノードグループ・ALB Controller の作成で 15〜20 分程度かかります。
+
+### 3. kubeconfig を更新
+
+```bash
+make kubeconfig
+kubectl get nodes
+```
+
+### 4. Passport Proxy をデプロイする
+
+ここから先は Passport の設定です。手順は [`docs/ja/`](.) にまとまっています。
+
+| ドキュメント | 内容 |
+| --- | --- |
+| [`01-infrastructure.md`](01-infrastructure.md) | 上記 1〜3 の詳細 + 管理プレーン用の ACM 証明書発行 |
+| [`02-passport-proxy.md`](02-passport-proxy.md) | 鍵の生成、`values.yaml` の設定、Helm でのデプロイ |
+| [`03-dns-and-exposure.md`](03-dns-and-exposure.md) | Route53 のレコード作成、疎通確認、Namespaces の設定 |
+| [`04-developer-setup.md`](04-developer-setup.md) | 開発者の CLI セットアップと secret reference の利用 |
+
+転送先の API はリポジトリに含めていません。`httpbin.org` のような外部エンドポイントを
+Namespace のリソースとして登録して検証します。
+
+## 片付け
+
+**ロードバランサーを先に消してから** `terraform destroy` を実行します。
+
+```bash
+# 1. Passport Proxy を入れている場合は Helm でアンインストール (NLB が消える)
+helm uninstall passport -n passport
+
+# 2. VPC 内に LB / SG が残っていないことを確認 (残っていたら exit 1)
+make destroy-check
+
+# 3. destroy
+make tf-destroy
+```
+
+> **⚠️ ALB / NLB は Terraform の管理対象外です。**
+>
+> これらは AWS Load Balancer Controller が `Ingress` / `type: LoadBalancer` の Service を見て作成するため、`terraform destroy` は削除しようとしません。残したまま destroy すると、LB の ENI が private subnet を掴んだままになり、次のエラーで失敗します。
+>
+> ```text
+> Error: deleting EC2 Subnet (subnet-xxxx): ... api error DependencyViolation:
+>   The subnet 'subnet-xxxx' has dependencies and cannot be deleted.
+> ```
+>
+> **とくに `helm uninstall passport` の消し忘れに注意してください。** Passport の NLB と ALB はどちらも Helm 管理下にあるため、残ったままだと destroy に失敗します。
+>
+> **LB を消しても付随するセキュリティグループ (`k8s-...`) は残ります。** その場合は次に VPC の削除が同じエラーで失敗します。`make destroy-check` は LB と SG の両方を確認します。
+>
+> **削除は非同期です。** `helm uninstall` の完了後、コントローラが実際に LB を消して ENI が解放されるまで **1〜3分**かかります。`make destroy-check` が「(なし)」を返すまで待ってから destroy してください。
+
+### destroy が DependencyViolation で失敗した場合
+
+EKS クラスタが先に消えているとコントローラも失われ、Service の削除による自動削除ができません。AWS 側から直接消します。
+
+```bash
+VPC_ID=<失敗したときの VPC ID>
+
+# 1. 残っている LB を特定
+aws elbv2 describe-load-balancers --region ap-northeast-1 \
+  --query "LoadBalancers[?VpcId=='$VPC_ID'].{Name:LoadBalancerName,ARN:LoadBalancerArn}" --output table
+
+# 2. 削除して、完全に消えるまで待つ
+aws elbv2 delete-load-balancer --region ap-northeast-1 --load-balancer-arn <ARN>
+aws elbv2 wait load-balancers-deleted --region ap-northeast-1 --load-balancer-arns <ARN>
+
+# 3. ENI が解放されたことを確認 (0 になるまで待つ。削除 API 完了後も数分かかる)
+aws ec2 describe-network-interfaces --region ap-northeast-1 \
+  --filters Name=vpc-id,Values=$VPC_ID \
+  --query 'length(NetworkInterfaces)' --output text
+
+# 4. destroy を再実行
+make tf-destroy
+```
+
+LB に付随するセキュリティグループ (`k8s-...`) も残ることがあります。destroy が今度は SG で止まった場合は、ENI 解放後に手動で削除してください。
+
 ## 検証済み環境
 
 本手順書は以下の環境でエンドツーエンドに検証しています。

@@ -6,11 +6,12 @@ Terraform で立て、Passport Proxy がシークレットを解決できるこ�
 ## 規約
 
 - **コミットメッセージは英語で書く。**
-- **ドキュメントは英語がデフォルト。** `docs/` 直下が英語、`docs/ja/` が日本語。
-  ルートは `README.md`（英語）と `README.ja.md`。ファイル名は言語間で揃える
+- **ルートの `README.md` は英語のみ。** リポジトリの概要とアーキテクチャだけを置き、
+  手順は持たせない（セットアップ・片付けは `docs/README.md` / `docs/ja/README.md`）。
+- **手順書は `docs/` が英語、`docs/ja/` が日本語。** ファイル名は言語間で揃える
   （`docs/ja/` 内の相互リンクがそのまま使えるため）。
 - **日英は並行更新する。** 内容を変えたら必ず両方直す。片方だけ直さない。
-  対応関係は `docs/<name>.md` ↔ `docs/ja/<name>.md`、`README.md` ↔ `README.ja.md`。
+  対応関係は `docs/<name>.md` ↔ `docs/ja/<name>.md`。
   見出しを変えたら、他ファイルから張られているアンカーも両言語で追従させる。
 - `project` / `environment` から全リソース名が決まる（`locals.tf` の `local.name`）。
   既定は `passport-sandbox-dev`。変更すると全リソースが作り直しになる。
