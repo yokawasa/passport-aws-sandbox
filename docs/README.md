@@ -7,6 +7,7 @@ Based on a configuration validated end to end in this repository. **The proxy an
 management plane are both reached over their own domain names — no `kubectl port-forward`.**
 
 > 日本語版: [ja/README.md](ja/README.md)
+> Both languages are kept in sync — if you change one, change the other.
 
 ## The sequence
 
