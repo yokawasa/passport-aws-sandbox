@@ -6,28 +6,47 @@ developer resolving secret references.
 Based on a configuration validated end to end in this repository. **The proxy and the
 management plane are both reached over their own domain names — no `kubectl port-forward`.**
 
-> ## 🚧 The English guide is not written yet
->
-> Only this index exists in English so far. **The complete guide is available in Japanese:**
->
-> → **[docs/ja/README.md](ja/README.md)**
->
-> The pages listed below link to the Japanese versions until their translations land.
-> Commands, YAML and output samples in those pages are language-independent, so they are
-> usable as-is.
+> 日本語版: [ja/README.md](ja/README.md)
+
+## The sequence
+
+```
+┌─ 01-infrastructure.md ──────────────────────────────┐
+│  Terraform: VPC / EKS / IRSA / Secrets Manager       │   admin
+│  AWS CLI  : issue the ACM certificate (DNS validated)│   40-60 min
+└──────────────────────┬──────────────────────────────┘
+                       │  EKS cluster, IRSA role ARN, certificate ARN
+                       ▼
+┌─ 02-passport-proxy.md ──────────────────────────────┐
+│  Helm: deploy the Passport Proxy                     │   admin
+│  Generate keys, set values.yaml, create NLB + ALB    │   30-45 min
+└──────────────────────┬──────────────────────────────┘
+                       │  NLB / ALB DNS names
+                       ▼
+┌─ 03-dns-and-exposure.md ────────────────────────────┐
+│  Route53: add CNAMEs, fix the SAN, helm upgrade      │   admin
+│  Verify connectivity, configure Passport Namespaces  │   30-40 min
+└──────────────────────┬──────────────────────────────┘
+                       │  Proxy URL / Management Host / public key
+                       ▼
+┌─ 04-developer-setup.md ─────────────────────────────┐
+│  Install and configure the Passport CLI, verify      │   developer
+│                                                      │   10-15 min
+└──────────────────────────────────────────────────────┘
+```
+
+**01-03 are done once, by an administrator. 04 is done by each developer on their own
+machine.** A developer's `passport login` will not complete until 01-03 are finished.
 
 ## Documents
 
 | # | Document | Audience | Contents |
 | --- | --- | --- | --- |
-| 01 | [Infrastructure](ja/01-infrastructure.md) 🇯🇵 | Admin | Build VPC / EKS / IRSA / Secrets Manager with Terraform; issue the ACM certificate |
-| 02 | [Deploying the Passport Proxy](ja/02-passport-proxy.md) 🇯🇵 | Admin | Generate keys, configure `values.yaml`, deploy with Helm |
-| 03 | [DNS and public exposure](ja/03-dns-and-exposure.md) 🇯🇵 | Admin | Add Route53 records, fix the hostnames, verify connectivity, configure Namespaces |
-| 04 | [Developer setup](ja/04-developer-setup.md) 🇯🇵 | Developer | Install the CLI and use secret references |
-| — | [Troubleshooting](ja/troubleshooting.md) 🇯🇵 | Everyone | Problems actually hit while building this |
-
-**01–03 are done once by an administrator. 04 is done by each developer on their own
-machine.** A developer's `passport login` will not complete until 01–03 are finished.
+| 01 | [Infrastructure](01-infrastructure.md) | Admin | Build VPC / EKS / IRSA / Secrets Manager with Terraform; issue the ACM certificate |
+| 02 | [Deploying the Passport Proxy](02-passport-proxy.md) | Admin | Generate keys, configure `values.yaml`, deploy with Helm |
+| 03 | [DNS and public exposure](03-dns-and-exposure.md) | Admin | Add Route53 records, fix the hostnames, verify connectivity, configure Namespaces |
+| 04 | [Developer setup](04-developer-setup.md) | Developer | Install the CLI and use secret references |
+| — | [Troubleshooting](troubleshooting.md) | Everyone | Problems actually hit while building this |
 
 ## How this is exposed
 

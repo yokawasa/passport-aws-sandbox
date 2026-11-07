@@ -42,8 +42,9 @@ cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 `terraform.tfvars.example` には全変数が記載済みなので、値を書き足す必要はありません。
 ただし以下は**必ず自分の環境の値に直してください**。
 
-> **⚠️ `endpoint_public_access_cidrs` は例示用の IP (`203.0.113.10/32`) が入っています。**
-> そのまま apply すると自分の端末から `kubectl` が通りません。
+> **⚠️ `endpoint_public_access_cidrs` はコメントアウトされています。**
+> そのまま apply すると変数の既定値 `0.0.0.0/0` が使われ、**EKS の API が全世界に
+> 公開されます。** 行のコメントを外し、自分のグローバル IP に書き換えてください。
 >
 > ```bash
 > curl -s https://checkip.amazonaws.com   # 自分のグローバル IP を確認
