@@ -5,8 +5,7 @@
 > **前のステップ**: なし（ここから開始）
 > **次のステップ**: [02. Passport Proxy のデプロイ](02-passport-proxy.md)
 
-Passport Proxy用のベースインフラを構築します。Terraform で VPC / EKS / IRSA / Secrets Manager を作り、Passport Proxy の管理プレーン
-(:8081) 用の ACM 証明書を発行します。
+Passport Proxy用のベースインフラを構築します。Terraform で VPC / EKS / IRSA / Secrets Manager を作り、Passport Proxy の管理プレーン(:8081) 用の ACM 証明書を発行します。
 
 ## このステップで作るもの
 
