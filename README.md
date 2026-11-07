@@ -112,13 +112,6 @@ See the guides under [`docs/`](docs/) for details.
 
 The full procedure — infrastructure, proxy deployment, DNS, and developer setup — is in [`docs/`](docs/) (日本語版:([`docs/ja/`](docs/ja/README.md)).
 
-| # | Document | Audience |
-| --- | --- | --- |
-| 01 | [Infrastructure](docs/01-infrastructure.md) | Admin |
-| 02 | [Deploying the Passport Proxy](docs/02-passport-proxy.md) | Admin |
-| 03 | [DNS and public exposure](docs/03-dns-and-exposure.md) | Admin |
-| 04 | [Developer setup](docs/04-developer-setup.md) | Developer |
-| — | [Troubleshooting](docs/troubleshooting.md) | Everyone |
 
 ## Worth considering for production
 

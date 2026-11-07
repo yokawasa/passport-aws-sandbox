@@ -145,7 +145,7 @@ Docker / Kubernetes / Helm / YAML / プライベートレジストリを一通�
 
 ## セットアップ
 
-Passport Proxy を構築します。
+Passport Proxyセットアップ手順全体の解説です。ベースインフラ、Passport Proxyの展開、DNS設定、および開発者のPassport設定を含みます。
 
 | ドキュメント | 内容 |
 | --- | --- |

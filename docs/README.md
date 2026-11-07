@@ -41,6 +41,8 @@ machine.** A developer's `passport login` will not complete until 01-03 are fini
 
 ## Documents
 
+The full procedure — infrastructure, proxy deployment, DNS, and developer setup.
+
 | # | Document | Audience | Contents |
 | --- | --- | --- | --- |
 | 01 | [Infrastructure](01-infrastructure.md) | Admin | Build VPC / EKS / IRSA / Secrets Manager with Terraform; issue the ACM certificate |
