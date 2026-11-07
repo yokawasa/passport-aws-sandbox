@@ -13,7 +13,7 @@ override.tf.json
 .terraformrc
 terraform.rc
 
-# 変数ファイル (機密が入りうるのでコミットしない)
+# Variables files
 *.tfvars
 *.tfvars.json
 !*.tfvars.example
