@@ -1,7 +1,6 @@
 # Passport on AWS — セットアップ手順書
 
 > **English**: [../README.md](../README.md)
-> 日英は**並行更新**します。どちらか一方だけを直さないでください。
 
 [Postman Passport](https://usepassport.ai) を AWS (EKS) 上にゼロから構築し、開発者が
 secret reference を使って API を叩けるようになるまでの手順書です。
