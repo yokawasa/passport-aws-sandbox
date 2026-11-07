@@ -15,7 +15,7 @@ this repository. All infrastructure is written in Terraform, building on the exi
 > is the index). The proxy and management plane are reached over their own domain names
 > rather than `kubectl port-forward`.
 >
-> 日本語版: [docs/ja/](docs/ja/)
+> 日本語版: [docs/ja/](docs/ja/README.md)
 
 ## Architecture
 
@@ -110,8 +110,7 @@ See the guides under [`docs/`](docs/) for details.
 
 ## Setup
 
-The full procedure — infrastructure, proxy deployment, DNS, and developer setup — is in
-[`docs/`](docs/). Start at [`docs/README.md`](docs/README.md).
+The full procedure — infrastructure, proxy deployment, DNS, and developer setup — is in [`docs/`](docs/) (日本語版:([`docs/ja/`](docs/ja/README.md)).
 
 | # | Document | Audience |
 | --- | --- | --- |

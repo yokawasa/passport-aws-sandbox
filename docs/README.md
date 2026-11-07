@@ -12,27 +12,27 @@ management plane are both reached over their own domain names — no `kubectl po
 ## The sequence
 
 ```
-┌─ 01-infrastructure.md ──────────────────────────────┐
-│  Terraform: VPC / EKS / IRSA / Secrets Manager       │   admin
-│  AWS CLI  : issue the ACM certificate (DNS validated)│   40-60 min
-└──────────────────────┬──────────────────────────────┘
+┌─ 01-infrastructure.md ───────────────────────────────┐
+│  Terraform: VPC / EKS / IRSA / Secrets Manager       │ admin
+│  AWS CLI  : issue the ACM certificate (DNS validated)│
+└──────────────────────┬───────────────────────────────┘
                        │  EKS cluster, IRSA role ARN, certificate ARN
                        ▼
-┌─ 02-passport-proxy.md ──────────────────────────────┐
-│  Helm: deploy the Passport Proxy                     │   admin
-│  Generate keys, set values.yaml, create NLB + ALB    │   30-45 min
-└──────────────────────┬──────────────────────────────┘
+┌─ 02-passport-proxy.md ───────────────────────────────┐
+│  Helm: deploy the Passport Proxy                     │ admin
+│  Generate keys, set values.yaml, create NLB + ALB    │
+└──────────────────────┬───────────────────────────────┘
                        │  NLB / ALB DNS names
                        ▼
-┌─ 03-dns-and-exposure.md ────────────────────────────┐
-│  Route53: add CNAMEs, fix the SAN, helm upgrade      │   admin
-│  Verify connectivity, configure Passport Namespaces  │   30-40 min
-└──────────────────────┬──────────────────────────────┘
+┌─ 03-dns-and-exposure.md ─────────────────────────────┐
+│  Route53: add CNAMEs, fix the SAN, helm upgrade      │ admin
+│  Verify connectivity, configure Passport Namespaces  │
+└──────────────────────┬───────────────────────────────┘
                        │  Proxy URL / Management Host / public key
                        ▼
-┌─ 04-developer-setup.md ─────────────────────────────┐
-│  Install and configure the Passport CLI, verify      │   developer
-│                                                      │   10-15 min
+┌─ 04-developer-setup.md ──────────────────────────────┐
+│  Install and configure the Passport CLI, verify      │ developer
+│                                                      │
 └──────────────────────────────────────────────────────┘
 ```
 

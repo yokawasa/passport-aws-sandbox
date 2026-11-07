@@ -12,27 +12,27 @@ Proxy と管理プレーンの両方に独自ドメインで外部からアク�
 ## 全体の流れ
 
 ```
-┌─ 01-infrastructure.md ──────────────────────────────┐
-│  Terraform: VPC / EKS / IRSA / Secrets Manager       │   管理者
-│  AWS CLI  : ACM 証明書の発行（DNS 検証）             │   40〜60分
-└──────────────────────┬──────────────────────────────┘
-                       │  EKS クラスタ・IRSA ロール ARN・証明書 ARN
+┌─ 01-infrastructure.md ───────────────────────────────┐
+│  Terraform: VPC / EKS / IRSA / Secrets Manager       │ 管理者
+│  AWS CLI  : ACM 証明書の発行 (DNS 検証）             .  │
+└──────────────────────┬───────────────────────────────┘
+                       │ EKSクラスタ・IRSAロールARN・証明書ARN
                        ▼
-┌─ 02-passport-proxy.md ──────────────────────────────┐
-│  Helm: Passport Proxy をデプロイ                     │   管理者
-│  鍵の生成、values.yaml の設定、NLB + ALB の作成      │   30〜45分
-└──────────────────────┬──────────────────────────────┘
-                       │  NLB / ALB の DNS 名
+┌─ 02-passport-proxy.md ───────────────────────────────┐
+│  Helm: Passport Proxy　をデプロイ                      │ 管理者
+│  鍵の生成、values.yaml の設定、NLB + ALB の作成          │
+└──────────────────────┬───────────────────────────────┘
+                       │ NLB/ALBのDNS名
                        ▼
-┌─ 03-dns-and-exposure.md ────────────────────────────┐
-│  Route53: CNAME を切る → SAN を確定 → helm upgrade   │   管理者
-│  疎通確認、Passport Cloud の Namespaces 設定         │   30〜40分
-└──────────────────────┬──────────────────────────────┘
-                       │  Proxy URL / Management Host / 公開鍵
+┌─ 03-dns-and-exposure.md ─────────────────────────────┐
+│  Route53: CNAME を切る → SAN を確定 → helm upgrade     │ 管理者
+│  疎通確認 Passport Cloud の Namespaces設定　 　         │
+└──────────────────────┬───────────────────────────────┘
+                       │ Proxy URL/Management Host/公開鍵
                        ▼
-┌─ 04-developer-setup.md ─────────────────────────────┐
-│  Passport CLI のインストールと設定、通信確認         │   開発者
-│                                                      │   10〜15分
+┌─ 04-developer-setup.md ──────────────────────────────┐
+│  Passport CLIのインストールと設定、通信確認　　            │ 開発者
+│                                                      │ 
 └──────────────────────────────────────────────────────┘
 ```
 
@@ -159,7 +159,7 @@ kubectl get nodes
 
 ### 4. Passport Proxy をデプロイする
 
-ここから先は Passport の設定です。手順は [`docs/ja/`](.) にまとまっています。
+ここから先はPassportの設定です。
 
 | ドキュメント | 内容 |
 | --- | --- |
