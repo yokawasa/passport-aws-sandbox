@@ -133,36 +133,7 @@ You also need permission to create VPC / EKS / IAM / ELB resources in the target
 
 ## Setup
 
-### 1. Create the S3 bucket for tfstate
-
-```bash
-make bootstrap TFSTATE_BUCKET=my-tfstate-bucket-1234 REGION=ap-northeast-1
-```
-
-### 2. Prepare variables, then init / apply
-
-```bash
-cp terraform/terraform.tfvars.example terraform/terraform.tfvars
-# Edit as needed. Restrict endpoint_public_access_cidrs to the IP you run kubectl
-# from — it defaults to 0.0.0.0/0.
-
-make tf-init TFSTATE_BUCKET=my-tfstate-bucket-1234
-make tf-plan
-make tf-apply
-```
-
-Creating the VPC, EKS cluster, node group and ALB Controller takes roughly 15–20 minutes.
-
-### 3. Update kubeconfig
-
-```bash
-make kubeconfig
-kubectl get nodes
-```
-
-### 4. Deploy the Passport Proxy
-
-Everything from here is Passport configuration, covered in [`docs/`](.).
+Build the basic infrastructure for Passport Proxy.
 
 | Document | Contents |
 | --- | --- |

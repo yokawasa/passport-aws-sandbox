@@ -5,8 +5,7 @@
 > **Previous step**: none (start here)
 > **Next step**: [02. Deploying the Passport Proxy](02-passport-proxy.md)
 
-Build the VPC / EKS / IRSA / Secrets Manager with Terraform, and issue the ACM certificate
-for the Passport Proxy's management plane (:8081).
+Build the basic infrastructure for Passport Proxy by building the VPC / EKS / IRSA / Secrets Manager with Terraform, and issuing the ACM certificate for the Passport Proxy's management plane (:8081).
 
 ## What this step creates
 

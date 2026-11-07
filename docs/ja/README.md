@@ -145,39 +145,11 @@ Docker / Kubernetes / Helm / YAML / プライベートレジストリを一通�
 
 ## セットアップ
 
-### 1. tfstate 用 S3 バケットを作る
-
-```bash
-make bootstrap TFSTATE_BUCKET=my-tfstate-bucket-1234 REGION=ap-northeast-1
-```
-
-### 2. 変数を用意して init / apply
-
-```bash
-cp terraform/terraform.tfvars.example terraform/terraform.tfvars
-# 必要に応じて編集（endpoint_public_access_cidrs は kubectl の接続元 IP に絞るのを推奨。既定は 0.0.0.0/0）
-
-make tf-init TFSTATE_BUCKET=my-tfstate-bucket-1234
-make tf-plan
-make tf-apply
-```
-
-VPC・EKS・ノードグループ・ALB Controller の作成で 15〜20 分程度かかります。
-
-### 3. kubeconfig を更新
-
-```bash
-make kubeconfig
-kubectl get nodes
-```
-
-### 4. Passport Proxy をデプロイする
-
-ここから先はPassportの設定です。
+Passport Proxy を構築します。
 
 | ドキュメント | 内容 |
 | --- | --- |
-| [`01-infrastructure.md`](01-infrastructure.md) | 上記 1〜3 の詳細 + 管理プレーン用の ACM 証明書発行 |
+| [`01-infrastructure.md`](01-infrastructure.md) | Passport Proxyのベースとなるインフラを構築 |
 | [`02-passport-proxy.md`](02-passport-proxy.md) | 鍵の生成、`values.yaml` の設定、Helm でのデプロイ |
 | [`03-dns-and-exposure.md`](03-dns-and-exposure.md) | Route53 のレコード作成、疎通確認、Namespaces の設定 |
 | [`04-developer-setup.md`](04-developer-setup.md) | 開発者の CLI セットアップと secret reference の利用 |
