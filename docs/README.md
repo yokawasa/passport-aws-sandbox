@@ -39,18 +39,6 @@ management plane are both reached over their own domain names — no `kubectl po
 **01-03 are done once, by an administrator. 04 is done by each developer on their own
 machine.** A developer's `passport login` will not complete until 01-03 are finished.
 
-## Documents
-
-The full procedure — infrastructure, proxy deployment, DNS, and developer setup.
-
-| # | Document | Audience | Contents |
-| --- | --- | --- | --- |
-| 01 | [Infrastructure](01-infrastructure.md) | Admin | Build VPC / EKS / IRSA / Secrets Manager with Terraform; issue the ACM certificate |
-| 02 | [Deploying the Passport Proxy](02-passport-proxy.md) | Admin | Generate keys, configure `values.yaml`, deploy with Helm |
-| 03 | [DNS and public exposure](03-dns-and-exposure.md) | Admin | Add Route53 records, fix the hostnames, verify connectivity, configure Namespaces |
-| 04 | [Developer setup](04-developer-setup.md) | Developer | Install the CLI and use secret references |
-| — | [Troubleshooting](troubleshooting.md) | Everyone | Problems actually hit while building this |
-
 ## How this is exposed
 
 Validating by hand with `kubectl port-forward` every time does not scale to a team, so the
@@ -135,14 +123,15 @@ You also need permission to create VPC / EKS / IAM / ELB resources in the target
 
 ## Setup
 
-Build the basic infrastructure for Passport Proxy.
+The full procedure — infrastructure, proxy deployment, DNS, and developer setup.
 
-| Document | Contents |
-| --- | --- |
-| [01 Infrastructure](01-infrastructure.md)  | Steps 1–3 above in detail, plus issuing the ACM certificate for the management plane |
-| [02 Deploying the proxy](02-passport-proxy.md) | Generating keys, configuring `values.yaml`, deploying with Helm |
-| [03 DNS and exposure](03-dns-and-exposure.md) | Route53 records, connectivity checks, configuring Namespaces |
-| [04 Developer setup](04-developer-setup.md) | Developer CLI setup and using secret references |
+| # | Document | Audience | Contents |
+| --- | --- | --- | --- |
+| 01 | [Infrastructure](01-infrastructure.md) | Admin | Build VPC / EKS / IRSA / Secrets Manager with Terraform; issue the ACM certificate |
+| 02 | [Deploying the Passport Proxy](02-passport-proxy.md) | Admin | Generate keys, configure `values.yaml`, deploy with Helm |
+| 03 | [DNS and public exposure](03-dns-and-exposure.md) | Admin | Add Route53 records, fix the hostnames, verify connectivity, configure Namespaces |
+| 04 | [Developer setup](04-developer-setup.md) | Developer | Install the CLI and use secret references |
+| — | [Troubleshooting](troubleshooting.md) | Everyone | Problems actually hit while building this |
 
 > 🇯🇵 [日本語セットアップガイド](ja/README.md)
 >  

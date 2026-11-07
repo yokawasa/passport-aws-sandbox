@@ -38,16 +38,6 @@ Proxy と管理プレーンの両方に独自ドメインで外部からアク�
 **01〜03 は管理者が1回だけ実施します。04 は開発者が各自の PC で実施します。**
 01〜03 が終わっていないと開発者の `passport setup` は完了しません。
 
-## ドキュメント一覧
-
-| # | ドキュメント | 対象 | 内容 |
-| --- | --- | --- | --- |
-| 01 | [インフラ構築](01-infrastructure.md) | 管理者 | ベースインフラの構築（Terraform で VPC / EKS / IRSA / Secrets Manager の構築、Passport Proxy の管理プレーン(:8081) 用の ACM 証明書の発行) |
-| 02 | [Passport Proxy のデプロイ](02-passport-proxy.md) | 管理者 | 鍵を生成し、Helm で Proxy をデプロイする |
-| 03 | [DNS と外部公開](03-dns-and-exposure.md) | 管理者 | Route53 にレコードを切り、ホスト名を確定して疎通確認する。Namespaces を設定する |
-| 04 | [開発者向けセットアップ](04-developer-setup.md) | 開発者 | CLI をインストールし、secret reference 経由で API を叩く |
-| — | [トラブルシューティング](troubleshooting.md) | 全員 | 実機で遭遇した落とし穴の一覧 |
-
 ## この構成の設計方針
 
 ### なぜ外部公開するのか
@@ -147,12 +137,13 @@ Docker / Kubernetes / Helm / YAML / プライベートレジストリを一通�
 
 Passport Proxyセットアップ手順全体の解説です。ベースインフラ、Passport Proxyの展開、DNS設定、および開発者のPassport設定を含みます。
 
-| ドキュメント | 内容 |
-| --- | --- |
-| [`01-infrastructure.md`](01-infrastructure.md) | Passport Proxyのベースとなるインフラを構築 |
-| [`02-passport-proxy.md`](02-passport-proxy.md) | 鍵の生成、`values.yaml` の設定、Helm でのデプロイ |
-| [`03-dns-and-exposure.md`](03-dns-and-exposure.md) | Route53 のレコード作成、疎通確認、Namespaces の設定 |
-| [`04-developer-setup.md`](04-developer-setup.md) | 開発者の CLI セットアップと secret reference の利用 |
+| # | ドキュメント | 対象 | 内容 |
+| --- | --- | --- | --- |
+| 01 | [インフラ構築](01-infrastructure.md) | 管理者 | ベースインフラの構築（Terraform で VPC / EKS / IRSA / Secrets Manager の構築、Passport Proxy の管理プレーン(:8081) 用の ACM 証明書の発行) |
+| 02 | [Passport Proxyのデプロイ](02-passport-proxy.md) | 管理者 | 鍵を生成し、Helm で Proxy をデプロイする |
+| 03 | [DNSと外部公開](03-dns-and-exposure.md) | 管理者 | Route53 にレコードを切り、ホスト名を確定して疎通確認する。Namespaces を設定する |
+| 04 | [開発者向けセットアップ](04-developer-setup.md) | 開発者 | CLI をインストールし、secret reference 経由で API を叩く |
+| — | [トラブルシューティング](troubleshooting.md) | 全員 | 実機で遭遇した落とし穴の一覧 |
 
 転送先の API はリポジトリに含めていません。`httpbin.org` のような外部エンドポイントを
 Namespace のリソースとして登録して検証します。
