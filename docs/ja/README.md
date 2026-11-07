@@ -1,6 +1,6 @@
 # Passport on AWS — セットアップ手順書
 
-> **English**: [../README.md](../README.md)
+> **English version** is [here](../README.md)
 
 [Postman Passport](https://usepassport.ai) を AWS (EKS) 上にゼロから構築し、開発者が
 secret reference を使って API を叩けるようになるまでの手順書です。
@@ -42,7 +42,7 @@ Proxy と管理プレーンの両方に独自ドメインで外部からアク�
 
 | # | ドキュメント | 対象 | 内容 |
 | --- | --- | --- | --- |
-| 01 | [インフラ構築](01-infrastructure.md) | 管理者 | Terraform で VPC / EKS / IRSA / Secrets Manager を作る。ACM 証明書を発行する |
+| 01 | [インフラ構築](01-infrastructure.md) | 管理者 | ベースインフラの構築（Terraform で VPC / EKS / IRSA / Secrets Manager の構築、Passport Proxy の管理プレーン(:8081) 用の ACM 証明書の発行) |
 | 02 | [Passport Proxy のデプロイ](02-passport-proxy.md) | 管理者 | 鍵を生成し、Helm で Proxy をデプロイする |
 | 03 | [DNS と外部公開](03-dns-and-exposure.md) | 管理者 | Route53 にレコードを切り、ホスト名を確定して疎通確認する。Namespaces を設定する |
 | 04 | [開発者向けセットアップ](04-developer-setup.md) | 開発者 | CLI をインストールし、secret reference 経由で API を叩く |
