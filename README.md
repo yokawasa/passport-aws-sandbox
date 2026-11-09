@@ -12,26 +12,7 @@ this repository. All infrastructure is written in Terraform, building on the exi
 
 ## Architecture
 
-```
-                      Internet
-                         │
-        ┌────────────────┴────────────────┐
-        │ NLB :8443          ALB :443     │  ← created from Service / Ingress
-        │ (data plane )      (/ca.pem     │
-        │                   /issue-cert)  │
-        ┴─────────────────────────────────┴
-        │  public subnet (AZ-a / AZ-c)    │
-        │   NAT Gateway                   │
-        └───────────────┬─────────────────┘
-                        │ target-type: ip
-                        ▼
-        ┌─────────────────────────────────┐
-        │  private subnet (AZ-a / AZ-c)   │
-        │   EKS Managed Node Group        │
-        │     └ Pod: Passport Proxy       │
-        │         :8443 / :8081           │
-        └─────────────────────────────────┘
-```
+![Infrastructure architecture](assets/infra-architecture.png)
 
 Notes:
 
@@ -95,7 +76,7 @@ Secrets Manager before forwarding, so **developers never receive the real creden
 │   └── terraform.tfvars.example
 ├── docs/                 # Passport setup guide (01–04 + troubleshooting)
 │   └── ja/               # Japanese translation
-├── assets/               # architecture diagram (drawio / png)
+├── assets/               # architecture diagrams (drawio / png)
 ├── .github/workflows/    # terraform fmt / validate
 └── Makefile
 ```

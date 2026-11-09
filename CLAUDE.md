@@ -26,7 +26,8 @@ Terraform で立て、Passport Proxy がシークレットを解決できるこ�
 | `terraform/` | VPC / EKS / ALB Controller / Passport 用 IRSA |
 | `docs/` | Passport セットアップ手順書（英語。01〜04 + troubleshooting） |
 | `docs/ja/` | 同・日本語版 |
-| `assets/` | アーキテクチャ図（`architecture.drawio` が原本、PNG は drawio CLI で書き出し） |
+| `assets/` | アーキテクチャ図。`infra-architecture.drawio`（インフラ構成）と
+  `app-architecture.drawio`（アプリ/Passport フロー）が原本。PNG は drawio CLI で書き出し |
 
 ## 落とし穴
 
