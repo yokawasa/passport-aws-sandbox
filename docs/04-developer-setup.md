@@ -17,7 +17,13 @@ There are only two things you need.
 
 ---
 
-## Step 1. Install the Passport CLI
+## Step 1. Request access
+
+Sign in to Passport Cloud and request access to the endpoints you need. Once an
+administrator approves, the secret references become usable.
+
+
+## Step 2. Install the Passport CLI
 
 ### macOS or Linux
 
@@ -35,15 +41,13 @@ Run the install command in PowerShell:
 irm "https://dl-passport.pstmn.io/install/enterprise/win64.ps1" | iex
 ```
 
-> The Windows path is unverified (this repository has only been exercised on macOS arm64).
-
 ### Verify the installation
 
 ```bash
 passport --version
 ```
 
-## Step 2. Check the current state (optional)
+## Step 3. Check the current state (optional)
 
 Nothing is configured right after installation.
 
@@ -55,7 +59,7 @@ passport ca status        # → no Passport CA certificate at ~/.passport/ca.pem
 
 Each of these commands is also useful later for troubleshooting.
 
-## Step 3. Log in
+## Step 4. Log in
 
 ```bash
 passport login
@@ -90,7 +94,7 @@ Example output
   expires     2026-11-03T14:06:12.000Z  (in 315s)
 ```
 
-## Step 4. Verify the permissions landed
+## Step 5. Verify the permissions landed
 
 Permission to use secret references is baked into the client certificate. **`login`
 succeeds even when it did not land**, so always check.
@@ -113,10 +117,10 @@ Passport identity:
   notAfter     2026-01-01T00:05:00.000Z  (valid for 85s)
 ```
 
-**If a resource appears under `allowedApiRefs`, you are done.** Move on to Step 5.
+**If a resource appears under `allowedApiRefs`, you are done.** Move on to Step 6.
 
 > **The `{{vault:...}}` shown is ready to use as-is.** You can copy the reference you need
-> for Step 5 straight from here, so there is no need to look up the UUID separately.
+> for Step 6 straight from here, so there is no need to look up the UUID separately.
 
 If `allowedApiRefs` stays `(none)`, or you cannot connect, see
 [troubleshooting](troubleshooting.md#developer-setup).
@@ -138,9 +142,9 @@ passport whoami --json
 **If `validity` is `EXPIRED`,** reissue the certificate with `passport refresh`
 (the TTL is 300 seconds at most).
 
-## Step 5. Verify traffic through Passport
+## Step 6. Verify traffic through Passport
 
-### 5-1. Start with a plain request to confirm connectivity
+### 6-1. Start with a plain request to confirm connectivity
 
 ```bash
 passport request https://httpbin.org/get --show-headers
@@ -156,7 +160,7 @@ aws ec2 describe-nat-gateways --region ap-northeast-1 \
   --query 'NatGateways[].NatGatewayAddresses[].PublicIp'
 ```
 
-### 5-2. Use a secret reference
+### 6-2. Use a secret reference
 
 **What you write in `{{vault:...}}` is the UUID Passport issued.**
 It is not the Secrets Manager key name.
@@ -167,7 +171,7 @@ It is not the Secrets Manager key name.
 | **`{{vault:...}}`** (written by the developer) | `aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee` (the UUID Passport issued) |
 
 The references available to you appear verbatim in the `passport whoami` output from
-Step 4.
+Step 5.
 
 ```text
   allowedApiRefs
@@ -205,7 +209,7 @@ other end.
 > itself ends up in the path, it can only be matched by a wildcard (such as
 > `/anything/*`). Putting it in a header is the most reliable option.
 
-### 5-3. Narrowing down errors
+### 6-3. Narrowing down errors
 
 | Response | `x-passport-proxy-error` | Cause |
 | --- | --- | --- |
@@ -222,13 +226,6 @@ other end.
 | `-d, --data <body>` | Request body |
 | `--show-headers` | Also show the response status and headers |
 | `--insecure-proxy-hostname` | Skip hostname verification for the outer TLS (certificate chain verification continues) |
-
----
-
-## Step 6. Request access
-
-Sign in to Passport Cloud and request access to the endpoints you need. Once an
-administrator approves, the secret references become usable.
 
 ---
 

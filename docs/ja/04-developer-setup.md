@@ -15,7 +15,12 @@ Passport CLI をインストールし、secret reference を使って API を叩
 
 ---
 
-## Step 1. Passport CLI をインストールする
+## Step 1. アクセスをリクエストする
+
+Passport Cloud にサインインし、必要なエンドポイントへのアクセスをリクエストします。
+管理者の承認後、secret reference が使えるようになります。
+
+## Step 2. Passport CLI をインストールする
 
 ### macOS or Linux
 
@@ -39,7 +44,7 @@ irm "https://dl-passport.pstmn.io/install/enterprise/win64.ps1" | iex
 passport --version
 ```
 
-## Step 2. 現在の状態を確認する（任意）
+## Step 3. 現在の状態を確認する（任意）
 
 インストール直後は何も設定されていません。
 
@@ -51,7 +56,7 @@ passport ca status        # → no Passport CA certificate at ~/.passport/ca.pem
 
 各コマンドは後でトラブルシューティングにも使えます。
 
-## Step 3. ログインする
+## Step 4. ログインする
 
 ```bash
 passport login
@@ -86,7 +91,7 @@ passport auth status
   expires     2026-11-03T14:06:12.000Z  (in 315s)
 ```
 
-## Step 4. 権限が乗ったか確認する
+## Step 5. 権限が乗ったか確認する
 
 secret reference を使う権限は、クライアント証明書に焼き込まれます。**乗っていなくても
 `login` 自体は成功してしまう**ため、必ず確認してください。
@@ -109,9 +114,9 @@ Passport identity:
   notAfter     2026-01-01T00:05:00.000Z  (valid for 85s)
 ```
 
-**`allowedApiRefs` にリソースが出ていれば完了です。** Step 5 へ進んでください。
+**`allowedApiRefs` にリソースが出ていれば完了です。** Step 6 へ進んでください。
 
-> **そのまま使える `{{vault:...}}` が表示されます。** Step 5 で使う参照はここから
+> **そのまま使える `{{vault:...}}` が表示されます。** Step 6 で使う参照はここから
 > コピーできるので、UUID を別途調べる必要はありません。
 
 `allowedApiRefs` が `(none)` のまま、あるいは接続できない場合は
@@ -134,9 +139,9 @@ passport whoami --json
 **`validity` が `EXPIRED` なら** `passport refresh` で再発行してください
 （TTL は最大 300 秒）。
 
-## Step 5. Passport 経由の通信を確認する
+## Step 6. Passport 経由の通信を確認する
 
-### 5-1. まず素のリクエストで疎通を確認する
+### 6-1. まず素のリクエストで疎通を確認する
 
 ```bash
 passport request https://httpbin.org/get --show-headers
@@ -151,7 +156,7 @@ aws ec2 describe-nat-gateways --region ap-northeast-1 \
   --query 'NatGateways[].NatGatewayAddresses[].PublicIp'
 ```
 
-### 5-2. secret reference を使う
+### 6-2. secret reference を使う
 
 **`{{vault:...}}` に書くのは Passport が発行した UUID です。**
 Secrets Manager のキー名ではありません。
@@ -161,7 +166,7 @@ Secrets Manager のキー名ではありません。
 | Namespace の **vault key** 欄（管理者が設定） | `passport/demo/httpbin-token`（Secrets Manager のキー名） |
 | **`{{vault:...}}`**（開発者が書く） | `aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee`（Passport 発行の UUID） |
 
-使える参照は Step 4 の `passport whoami` にそのままの形で出ています。
+使える参照は Step 5 の `passport whoami` にそのままの形で出ています。
 
 ```text
   allowedApiRefs
@@ -198,7 +203,7 @@ passport request https://httpbin.org/anything/test \
 > 入るとワイルドカード（`/anything/*` など）でしか一致させられません。
 > ヘッダーに入れるのがもっとも確実です。
 
-### 5-3. エラーの切り分け
+### 6-3. エラーの切り分け
 
 | 応答 | `x-passport-proxy-error` | 原因 |
 | --- | --- | --- |
@@ -215,13 +220,6 @@ passport request https://httpbin.org/anything/test \
 | `-d, --data <body>` | リクエストボディ |
 | `--show-headers` | レスポンスのステータスとヘッダーも表示 |
 | `--insecure-proxy-hostname` | 外側 TLS のホスト名検証をスキップ（証明書チェーンの検証は継続） |
-
----
-
-## Step 6. アクセスをリクエストする
-
-Passport Cloud にサインインし、必要なエンドポイントへのアクセスをリクエストします。
-管理者の承認後、secret reference が使えるようになります。
 
 ---
 
