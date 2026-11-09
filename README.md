@@ -10,13 +10,6 @@ an **ALB**. The target API is an external one such as `httpbin.org`, so it is no
 this repository. All infrastructure is written in Terraform, building on the existing
 [terraform-aws-modules](https://github.com/terraform-aws-modules).
 
-> **The Passport setup guide lives in [`docs/`](docs/).**
-> It walks from infrastructure to developer usage in four parts ([`docs/README.md`](docs/README.md)
-> is the index). The proxy and management plane are reached over their own domain names
-> rather than `kubectl port-forward`.
->
-> 日本語版: [docs/ja/](docs/ja/README.md)
-
 ## Architecture
 
 ```
@@ -58,12 +51,11 @@ Notes:
 How certificates and requests flow across the three boundaries: the developer's machine,
 the Passport Proxy inside the customer VPC, and the target API it forwards to.
 
-![Application architecture](assets/architecture.png)
+![Application architecture](assets/app-architecture.png)
 
 The solid green line is the Passport flow verified end to end (against `httpbin.org`).
 Developer code contains only a `{{vault:<UUID>}}` reference; the proxy resolves it against
 Secrets Manager before forwarding, so **developers never receive the real credential**.
-See the guides under [`docs/`](docs/) for details.
 
 ### Components and their step in the Passport flow
 
@@ -110,7 +102,7 @@ See the guides under [`docs/`](docs/) for details.
 
 ## Setup
 
-The full procedure — infrastructure, proxy deployment, DNS, and developer setup — is in [`docs/`](docs/) (日本語版:([`docs/ja/`](docs/ja/README.md)).
+The full procedure — infrastructure, proxy deployment, DNS, and developer setup — is in [`docs/`](docs/) (日本語版:[`docs/ja/`](docs/ja/README.md)).
 
 
 ## Worth considering for production
