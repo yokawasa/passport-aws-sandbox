@@ -214,9 +214,3 @@ LB に付随するセキュリティグループ (`k8s-...`) も残ることが�
 | Helm チャート | `passport-0.6.0` |
 | イメージ | `passport-proxy:v0.6.0` |
 | CLI | `0.7.2` / macOS arm64 |
-
-> **ポートフォワード構成からの移行について**
->
-> 以前の構成（`scheme: internal` + port-forward）から移行する場合、**LB の scheme は
-> immutable なので `helm upgrade` では切り替わりません**。Service の delete + 再作成が
-> 必要です（DNS 名も変わるため、Route53 の CNAME も貼り替えてください）。
