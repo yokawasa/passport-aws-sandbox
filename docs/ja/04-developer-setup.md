@@ -6,77 +6,37 @@
 
 Passport CLI をインストールし、secret reference を使って API を叩けるようにします。
 
-> **ポートフォワードは不要です。**
-> 以前の構成では `kubectl port-forward` が必要でしたが、Proxy と管理プレーンは独自
-> ドメインで公開されているため CLI から直接接続できます。**kubectl や EKS への
-> アクセス権も必要ありません。**
-
 ## 事前に必要なもの
-
-**この手順書以外に受け取るものはありません。** 接続先の URL も Namespace ID も、
-`passport login` が自動で解決します。
 
 必要なのは次の2つだけです。
 
 - Postman アカウント（Passport Cloud のチームに招待されていること）
-- CLI をインストールできる権限（macOS なら管理者パスワード）
+- Passport CLI をインストールできる権限（macOS なら管理者パスワード）
 
 ---
 
 ## Step 1. Passport CLI をインストールする
 
-### macOS
+### macOS or Linux
 
-Apple シリコンか Intel かで取得するファイルが変わります。まず自分の Mac を確認します。
+ターミナルで以下のコマンドを実行します。
 
-```bash
-uname -m
-```
-
-- `arm64` → Apple シリコン
-- `x86_64` → Intel
-
-```bash
-# インストールするバージョン（管理者に確認。本書は 0.7.2 で検証）
-PASSPORT_VERSION=0.7.2
-
-# Apple シリコンなら osx_arm64、Intel なら osx_64
-ARCH=$([ "$(uname -m)" = arm64 ] && echo osx_arm64 || echo osx_64)
-
-curl -fL -o ~/Downloads/passport.pkg \
-  "https://dl-passport.pstmn.io/download/version/$PASSPORT_VERSION/$ARCH"
-```
-
-> リリースチャネルによっては URL に `?channel=canary` が必要です（例:
-> `.../0.6.0-canary-260921-212749/osx_arm64?channel=canary`）。配布方法は
-> 管理者に確認してください。
-
-インストールします（管理者パスワードの入力を求められます）。
-
-```bash
-sudo installer -pkg ~/Downloads/passport.pkg -target /
+```sh
+curl -fsSL "https://dl-passport.pstmn.io/install/enterprise/unix.sh" | sh
 ```
 
 ### Windows (PowerShell)
 
-```powershell
-curl.exe -fL -o $env:USERPROFILE\Downloads\passport.msi "https://dl-passport.pstmn.io/download/version/0.7.2/win_64"
-```
+PowerShellで以下のコマンドを実行します。
 
 ```powershell
-msiexec /i $env:USERPROFILE\Downloads\passport.msi /quiet
+irm "https://dl-passport.pstmn.io/install/enterprise/win64.ps1" | iex
 ```
-
-> Windows 環境は未検証です（本リポジトリでの動作確認は macOS arm64 のみ）。
 
 ### インストールを確認する
 
 ```bash
 passport --version
-```
-
-```text
-0.7.2
 ```
 
 ## Step 2. 現在の状態を確認する（任意）

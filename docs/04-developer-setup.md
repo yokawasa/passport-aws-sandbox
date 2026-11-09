@@ -8,65 +8,31 @@
 Install the Passport CLI and get to the point where you can call APIs using secret
 references.
 
-> **No port forwarding is needed.**
-> Earlier setups required `kubectl port-forward`, but the Proxy and the management plane
-> are published under their own domains, so the CLI connects to them directly. **You do
-> not need access to kubectl or EKS either.**
-
 ## What you need beforehand
-
-**You receive nothing beyond this guide.** `passport login` resolves both the URLs to
-connect to and the Namespace ID on its own.
 
 There are only two things you need.
 
 - A Postman account (invited to the team in Passport Cloud)
-- Permission to install the CLI (on macOS, the administrator password)
+- Permission to install the Passport CLI (on macOS, the administrator password)
 
 ---
 
 ## Step 1. Install the Passport CLI
 
-### macOS
+### macOS or Linux
 
-The file you download differs between Apple silicon and Intel. Check your Mac first.
+Run the install command in your terminal:
 
-```bash
-uname -m
-```
-
-- `arm64` → Apple silicon
-- `x86_64` → Intel
-
-```bash
-# The version to install (confirm with your administrator; this guide was verified with 0.7.2)
-PASSPORT_VERSION=0.7.2
-
-# osx_arm64 for Apple silicon, osx_64 for Intel
-ARCH=$([ "$(uname -m)" = arm64 ] && echo osx_arm64 || echo osx_64)
-
-curl -fL -o ~/Downloads/passport.pkg \
-  "https://dl-passport.pstmn.io/download/version/$PASSPORT_VERSION/$ARCH"
-```
-
-> Some release channels require `?channel=canary` in the URL (for example
-> `.../0.6.0-canary-260921-212749/osx_arm64?channel=canary`). Ask your administrator how
-> the CLI is distributed.
-
-Install it (you will be prompted for the administrator password).
-
-```bash
-sudo installer -pkg ~/Downloads/passport.pkg -target /
+```sh
+curl -fsSL "https://dl-passport.pstmn.io/install/enterprise/unix.sh" | sh
 ```
 
 ### Windows (PowerShell)
 
-```powershell
-curl.exe -fL -o $env:USERPROFILE\Downloads\passport.msi "https://dl-passport.pstmn.io/download/version/0.7.2/win_64"
-```
+Run the install command in PowerShell:
 
 ```powershell
-msiexec /i $env:USERPROFILE\Downloads\passport.msi /quiet
+irm "https://dl-passport.pstmn.io/install/enterprise/win64.ps1" | iex
 ```
 
 > The Windows path is unverified (this repository has only been exercised on macOS arm64).
@@ -75,10 +41,6 @@ msiexec /i $env:USERPROFILE\Downloads\passport.msi /quiet
 
 ```bash
 passport --version
-```
-
-```text
-0.7.2
 ```
 
 ## Step 2. Check the current state (optional)
