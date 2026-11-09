@@ -58,7 +58,8 @@ passport login
 ```
 
 > **`passport login` はデフォルトでセットアップまで自動実行します。**
-> 自動セットアップを止めたい場合は `--no-setup` を付けてください。
+> - 自動セットアップをスキップしたい場合は `--no-setup` を付けて実行してください。
+> - CI等での実行において、ブラウザを使わず、API キーで認証したい場合は `--with-api-key <apikey>`を付けて実行してください。
 
 | オプション | 用途 |
 | --- | --- |
@@ -67,8 +68,22 @@ passport login
 | `--no-setup` | ログイン後の自動セットアップをスキップする |
 | `--verbose` | エラーの詳細を表示する |
 
+`passport login`　を実行した後に、以下のコマンドを実行して現在の認証トークンを確認してください。
+
 ```bash
 passport auth status
+```
+
+出力例
+
+```text
+  signature   verified (RS256, kid=sso_oidc_key_pair_01M082E1DKDNEX84CAVQ7NRHYA)
+  subject     user_01M391ERCKN5QDJYNYT42BJ8XH
+  session     session_01M6MP1AYQFK72MPKBPPN6ABMD
+  org         org_01M392H68AJCPBQ9G6WGEWS1Z3
+  issuer      https://auth-api.usepassport.ai/user_management/client_01M082E1F9TQ0GCM82FDP2E2SM
+  client_id   client_01M0FYNCRW0TQTA8HH0VG013YX
+  expires     2026-11-03T14:06:12.000Z  (in 315s)
 ```
 
 ## Step 4. 権限が乗ったか確認する

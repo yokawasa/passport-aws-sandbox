@@ -62,7 +62,8 @@ passport login
 ```
 
 > **`passport login` runs setup automatically by default.**
-> Add `--no-setup` if you want to stop the automatic setup.
+> - Add `--no-setup` if you want to skip the automatic setup.
+> - Add `--with-api-key <apikey>` if you want to authenticate with an API key instead of a browser for CI.
 
 | Option | Purpose |
 | --- | --- |
@@ -71,8 +72,22 @@ passport login
 | `--no-setup` | Skip the automatic setup that follows login |
 | `--verbose` | Show error details |
 
+After `passport login`, run the following command to inspect the current authentication token.
+
 ```bash
 passport auth status
+```
+
+Example output
+
+```text
+  signature   verified (RS256, kid=sso_oidc_key_pair_01M082E1DKDNEX84CAVQ7NRHYA)
+  subject     user_01M391ERCKN5QDJYNYT42BJ8XH
+  session     session_01M6MP1AYQFK72MPKBPPN6ABMD
+  org         org_01M392H68AJCPBQ9G6WGEWS1Z3
+  issuer      https://auth-api.usepassport.ai/user_management/client_01M082E1F9TQ0GCM82FDP2E2SM
+  client_id   client_01M0FYNCRW0TQTA8HH0VG013YX
+  expires     2026-11-03T14:06:12.000Z  (in 315s)
 ```
 
 ## Step 4. Verify the permissions landed
