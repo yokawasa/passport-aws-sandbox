@@ -203,6 +203,18 @@ passport request https://httpbin.org/anything/test \
 > 入るとワイルドカード（`/anything/*` など）でしか一致させられません。
 > ヘッダーに入れるのがもっとも確実です。
 
+なお、curlで実行する場合も同じく `{{vault:...}}`をAuthorizationヘッダーに指定して送付すれば同じような結果が得られます。
+
+```sh
+curl https://httpbin.org/anything/test \
+     -H 'Authorization: Bearer {{vault:aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee}}'
+
+# 明示的に proxy (http://127.0.0.1:10144)を指定する方法（検証用）
+# curl -x http://127.0.0.1:10144 \
+#     https://httpbin.org/anything/test \
+#     -H 'Authorization: Bearer {{vault:aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee}}'
+```
+
 ### 6-3. エラーの切り分け
 
 | 応答 | `x-passport-proxy-error` | 原因 |
