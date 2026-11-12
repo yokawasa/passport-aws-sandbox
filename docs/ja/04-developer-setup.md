@@ -10,7 +10,7 @@ Passport CLI をインストールし、secret reference を使って API を叩
 
 必要なのは次の2つだけです。
 
-- Postman アカウント（Passport Cloud のチームに招待されていること）
+- Passport アカウント（Passport Cloud のチームに招待されていること）
 - Passport CLI をインストールできる権限（macOS なら管理者パスワード）
 
 ---
