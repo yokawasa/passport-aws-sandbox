@@ -9,36 +9,6 @@ management plane are both reached over their own domain names — no `kubectl po
 > 日本語版: [ja/README.md](ja/README.md)
 > Both languages are kept in sync — if you change one, change the other.
 
-## The sequence
-
-```
-┌─ 01-infrastructure.md ───────────────────────────────┐
-│  Terraform: VPC / EKS / IRSA / Secrets Manager       │ admin
-│  AWS CLI  : issue the ACM certificate (DNS validated)│
-└──────────────────────┬───────────────────────────────┘
-                       │  EKS cluster, IRSA role ARN, certificate ARN
-                       ▼
-┌─ 02-passport-proxy.md ───────────────────────────────┐
-│  Helm: deploy the Passport Proxy                     │ admin
-│  Generate keys, set values.yaml, create NLB + ALB    │
-└──────────────────────┬───────────────────────────────┘
-                       │  NLB / ALB DNS names
-                       ▼
-┌─ 03-dns-and-exposure.md ─────────────────────────────┐
-│  Route53: add CNAMEs, fix the SAN, helm upgrade      │ admin
-│  Verify connectivity, configure Passport Namespaces  │
-└──────────────────────┬───────────────────────────────┘
-                       │  Proxy URL / Management Host / public key
-                       ▼
-┌─ 04-developer-setup.md ──────────────────────────────┐
-│  Install and configure the Passport CLI, verify      │ developer
-│                                                      │
-└──────────────────────────────────────────────────────┘
-```
-
-**01-03 are done once, by an administrator. 04 is done by each developer on their own
-machine.** A developer's `passport login` will not complete until 01-03 are finished.
-
 ## How this is exposed
 
 Validating by hand with `kubectl port-forward` every time does not scale to a team, so the
@@ -123,7 +93,10 @@ You also need permission to create VPC / EKS / IAM / ELB resources in the target
 
 ## Setup
 
-The full procedure — infrastructure, proxy deployment, DNS, and developer setup.
+Work through 01 → 02 → 03 → 04 in order. Each document's output (the IRSA role ARN, an LB's
+DNS name, the Proxy URL, and so on) feeds the next one, so **none of them can be skipped**.
+**01-03 are done once, by an administrator. 04 is done by each developer on their own
+machine, and `passport setup` will not complete until 01-03 are finished.**
 
 | # | Document | Audience | Contents |
 | --- | --- | --- | --- |
