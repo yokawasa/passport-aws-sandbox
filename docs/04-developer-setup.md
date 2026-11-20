@@ -253,6 +253,14 @@ passport daemon install
 > **⚠️ Right after `daemon install`, `HTTPS_PROXY` does not take effect in terminals that
 > are already open.** Open a new terminal.
 
+### Where certificates and related files are stored
+
+| File | Contents |
+| --- | --- |
+| `~/.passport/ca.pem` | CA certificate fetched from the management URL |
+| `~/.passport/cert.pem` | Client certificate issued by `POST /issue-cert` (including the extension embedding `allowedApiRefs` and similar) |
+| `~/.passport/identity.json` | Metadata such as `requestedRefs` / `endpoint` |
+
 ### Reissuing the certificate
 
 The certificate TTL is 300 seconds at most. You can tell it expired from `validity` in

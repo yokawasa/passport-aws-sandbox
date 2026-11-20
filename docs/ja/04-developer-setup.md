@@ -259,6 +259,14 @@ passport daemon install
 > **⚠️ `daemon install` 直後、既に開いているターミナルでは `HTTPS_PROXY` が効きません。**
 > 新しいターミナルを開いてください。
 
+### 証明書・関連ファイルの保存先
+
+| ファイル | 内容 |
+| --- | --- |
+| `~/.passport/ca.pem` | management-url から取得した CA 証明書 |
+| `~/.passport/cert.pem` | `POST /issue-cert` で発行されたクライアント証明書（`allowedApiRefs` などを埋め込んだ拡張を含む） |
+| `~/.passport/identity.json` | `requestedRefs` / `endpoint` などのメタデータ |
+
 ### 証明書の再発行
 
 証明書の TTL は最大 300 秒です。期限切れは `whoami` の `validity` で分かります。
