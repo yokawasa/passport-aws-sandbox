@@ -36,7 +36,7 @@ ALB だけです。
 
 ## 用語: 「管理プレーン」とは
 
-本書で**「管理プレーン」と書いたら Passport Proxy の `:8081`** を指します。`/ca.pem`、
+本書で **「管理プレーン」と書いたら Passport Proxy の `:8081`** を指します。`/ca.pem`、
 `/issue-cert`、`/metrics`、Console UI を提供するポートのことです。**Passport Cloud
 (`app.usepassport.ai`) ではありません**（こちらは SaaS なので構築対象外）。
 
