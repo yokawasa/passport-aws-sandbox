@@ -65,7 +65,7 @@ Each of these commands is also useful later for troubleshooting.
 passport login
 ```
 
-> **`passport login` runs setup automatically by default.**
+> **`passport login` runs setup ( = `passport setup`) automatically by default.**
 > - Add `--no-setup` if you want to skip the automatic setup.
 > - Add `--with-api-key <apikey>` if you want to authenticate with an API key instead of a browser for CI.
 
@@ -145,6 +145,12 @@ passport whoami --json
 ## Step 6. Verify traffic through Passport
 
 ### 6-1. Start with a plain request to confirm connectivity
+
+> [!IMPORTANT]
+>
+> Right after installing the Passport daemon, `HTTPS_PROXY` does not take effect in
+> terminals that are already open. Open a new terminal before running the request. See
+> "Managing the daemon" for how the daemon sets these environment variables.
 
 ```bash
 passport request https://httpbin.org/get --show-headers
@@ -241,17 +247,26 @@ passport daemon restart     # restart
 passport daemon logs -f     # follow the logs
 ```
 
-**To have it come up automatically after a Mac restart**, install the LaunchAgent.
-
-```bash
-passport daemon install
-```
-
-> With this in place you no longer have to type `export HTTPS_PROXY=...` every time.
-> **For developers it is effectively mandatory.**
+> [!NOTE]
 >
-> **⚠️ Right after `daemon install`, `HTTPS_PROXY` does not take effect in terminals that
-> are already open.** Open a new terminal.
+> The Passport daemon is installed when Passport is set up (= `passport setup`). Once the
+> daemon is installed, the following environment variables are set automatically (on
+> macOS, via `launchctl`), so you no longer have to type `export HTTPS_PROXY=...` every
+> time.
+>
+> - HTTPS_PROXY
+> - NO_PROXY
+> - NODE_EXTRA_CA_CERTS
+> - REQUESTS_CA_BUNDLE
+> - SSL_CERT_FILE
+
+> [!IMPORTANT]
+>
+> - Right after installing the Passport daemon, `HTTPS_PROXY` does not take effect in
+>   terminals that are already open. Open a new terminal.
+> - Stopping the Passport daemon unsets the environment variables above. However, any app
+>   that was already running before the stop keeps the old environment in memory, so
+>   restart the app to fully remove the proxy.
 
 ### Where certificates and related files are stored
 

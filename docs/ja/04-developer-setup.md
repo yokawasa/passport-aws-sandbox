@@ -62,7 +62,7 @@ passport ca status        # → no Passport CA certificate at ~/.passport/ca.pem
 passport login
 ```
 
-> **`passport login` はデフォルトでセットアップまで自動実行します。**
+> **`passport login` はデフォルトでセットアップ ( = `passport setup`) まで自動実行します。**
 > - 自動セットアップをスキップしたい場合は `--no-setup` を付けて実行してください。
 > - CI等での実行において、ブラウザを使わず、API キーで認証したい場合は `--with-api-key <apikey>`を付けて実行してください。
 
@@ -142,6 +142,11 @@ passport whoami --json
 ## Step 6. Passport 経由の通信を確認する
 
 ### 6-1. まず素のリクエストで疎通を確認する
+
+> [!IMPORTANT]
+> 
+> passportデーモンのインストール直後、既に開いているターミナルでは HTTPS_PROXY が効きません。新しいターミナルを開いてリクエスト実行ください。デーモンによる環境変数設定については「デーモンの管理」セクションも参照ください。
+> 
 
 ```bash
 passport request https://httpbin.org/get --show-headers
@@ -247,17 +252,22 @@ passport daemon restart     # 再起動
 passport daemon logs -f     # ログを追う
 ```
 
-**Mac を再起動しても自動で立ち上がるようにする**には LaunchAgent を入れます。
-
-```bash
-passport daemon install
-```
-
-> これを入れると `export HTTPS_PROXY=...` を毎回打つ必要がなくなります。
-> **開発者には実質必須**です。
+> [!Note]
 >
-> **⚠️ `daemon install` 直後、既に開いているターミナルでは `HTTPS_PROXY` が効きません。**
-> 新しいターミナルを開いてください。
+> passportがセットアップ (= `passport setup`) されるとpassportデーモンがインストールされます。 デーモンがインストールされると下記の環境変数が自動で設定 (例: MacOSの場合はlaunchctlによって設定) されるようになるため、毎回 HTTPS_PROXYを設定する( = `export HTTPS_PROXY=...` ) 必要がなくなります。
+>
+> - HTTPS_PROXY
+> - NO_PROXY
+> - NODE_EXTRA_CA_CERTS
+> - REQUESTS_CA_BUNDLE
+> - SSL_CERT_FILE
+>
+
+> [!IMPORTANT]
+>
+> - passportデーモンのインストール直後、既に開いているターミナルでは `HTTPS_PROXY` が効きません。新しいターミナルを開いてください。
+> - passportデーモンを停止すると、上記のHTTPS_PROXYなどの環境変数の自動設定が解除 (unset)されます。しかし、停止前に起動したアプリは、メモリ上に古い環境を保持しているためプロキシを完全に削除するには、アプリを再起動してください。
+
 
 ### 証明書・関連ファイルの保存先
 
